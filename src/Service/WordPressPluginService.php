@@ -168,13 +168,22 @@ final class WordPressPluginService
         $oneX = array_merge($oneX, [
             sprintf('https://ps.w.org/%s/assets/icon.svg', $slugEncoded),
             sprintf('https://ps.w.org/%s/assets/icon-128x128.png', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-128x128.jpg', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-128x128.jpeg', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-128x128.webp', $slugEncoded),
             sprintf('https://ps.w.org/%s/assets/icon-128x128.gif', $slugEncoded),
             sprintf('https://ps.w.org/%s/assets/icon-256x256.png', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-256x256.jpg', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-256x256.jpeg', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-256x256.webp', $slugEncoded),
             sprintf('https://ps.w.org/%s/assets/icon-256x256.gif', $slugEncoded),
         ]);
 
         $twoX = array_merge($twoX, [
             sprintf('https://ps.w.org/%s/assets/icon-256x256.png', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-256x256.jpg', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-256x256.jpeg', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-256x256.webp', $slugEncoded),
             sprintf('https://ps.w.org/%s/assets/icon-256x256.gif', $slugEncoded),
         ]);
 
