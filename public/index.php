@@ -24,6 +24,8 @@ $directoryController = new DirectoryController($submissionRepository, $wordPress
 
 $method = $_SERVER['REQUEST_METHOD'];
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$query = $_SERVER['QUERY_STRING'] ?? '';
+$querySuffix = $query !== '' ? '?' . $query : '';
 
 if ($method === 'GET' && $path === '/') {
     $homeController->index();
@@ -58,6 +60,20 @@ if ($method === 'POST' && preg_match('#^/software/(\d+)/comments$#', $path, $mat
     exit;
 }
 
+if ($method === 'POST' && preg_match('#^/software/(\d+)/admin/solution$#', $path, $matches) === 1) {
+    $softwareId = (int)$matches[1];
+    $flash = $directoryController->adminAddSoftwareSolution($softwareId, $_POST);
+    $directoryController->softwareDetail($softwareId, $flash['message'], $flash['type']);
+    exit;
+}
+
+if ($method === 'POST' && preg_match('#^/software/(\d+)/comments/(\d+)/hide$#', $path, $matches) === 1) {
+    $softwareId = (int)$matches[1];
+    $flash = $directoryController->adminHideSoftwareComment((int)$matches[2]);
+    $directoryController->softwareDetail($softwareId, $flash['message'], $flash['type']);
+    exit;
+}
+
 if ($method === 'GET' && preg_match('#^/reports/(\d+)$#', $path, $matches) === 1) {
     $directoryController->reportDetail((int)$matches[1]);
     exit;
@@ -66,6 +82,33 @@ if ($method === 'GET' && preg_match('#^/reports/(\d+)$#', $path, $matches) === 1
 if ($method === 'POST' && preg_match('#^/reports/(\d+)/comments$#', $path, $matches) === 1) {
     $reportId = (int)$matches[1];
     $flash = $directoryController->storeReportComment($reportId, $_POST);
+    $directoryController->reportDetail($reportId, $flash['message'], $flash['type']);
+    exit;
+}
+
+if ($method === 'POST' && preg_match('#^/reports/(\d+)/admin/hide$#', $path, $matches) === 1) {
+    $reportId = (int)$matches[1];
+    $flash = $directoryController->adminHideSubmission($reportId);
+    $redirectSoftware = isset($_POST['software_id']) ? (int)$_POST['software_id'] : 0;
+    if ($redirectSoftware > 0) {
+        header('Location: /software/' . $redirectSoftware . $querySuffix);
+        exit;
+    }
+
+    $directoryController->reportDetail($reportId, $flash['message'], $flash['type']);
+    exit;
+}
+
+if ($method === 'POST' && preg_match('#^/reports/(\d+)/admin/severity$#', $path, $matches) === 1) {
+    $reportId = (int)$matches[1];
+    $flash = $directoryController->adminOverrideSeverity($reportId, $_POST);
+    $directoryController->reportDetail($reportId, $flash['message'], $flash['type']);
+    exit;
+}
+
+if ($method === 'POST' && preg_match('#^/reports/(\d+)/comments/(\d+)/hide$#', $path, $matches) === 1) {
+    $reportId = (int)$matches[1];
+    $flash = $directoryController->adminHideReportComment((int)$matches[2]);
     $directoryController->reportDetail($reportId, $flash['message'], $flash['type']);
     exit;
 }
