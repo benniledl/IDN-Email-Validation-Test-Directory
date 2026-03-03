@@ -1,47 +1,41 @@
 <section class="app-card mb-4">
     <div class="app-card-body">
-        <div class="section-heading mb-3">
-            <div>
-                <?php
-                $softwareName = html_entity_decode((string)$software['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                $overallSeverity = (string)($software['overall_severity'] ?? 'none');
-                $severityTone = match ($overallSeverity) {
-                    'high' => 'danger',
-                    'medium' => 'warning',
-                    'low' => 'info',
-                    default => 'success',
-                };
-                ?>
-                <h1 class="h4 mb-1"><?= htmlspecialchars($softwareName, ENT_QUOTES, 'UTF-8') ?></h1>
-                <span class="badge text-bg-<?= $severityTone ?> text-uppercase">Risk level: <?= htmlspecialchars($overallSeverity, ENT_QUOTES, 'UTF-8') ?></span>
-            </div>
-            <a href="/software" class="btn btn-sm btn-outline-secondary">Back to overview</a>
-        </div>
+        <?php
+        $softwareName = html_entity_decode((string)$software['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $overallSeverity = (string)($software['overall_severity'] ?? 'none');
+        $severityTone = match ($overallSeverity) {
+            'high' => 'danger',
+            'medium' => 'warning',
+            'low' => 'info',
+            default => 'success',
+        };
+        ?>
 
-        <?php if (!empty($software['plugin_banner_url'])): ?>
-            <div class="plugin-hero">
+        <div class="plugin-hero software-hero mb-3">
+            <?php if (!empty($software['plugin_banner_url'])): ?>
                 <img class="plugin-banner-image" src="<?= htmlspecialchars((string)$software['plugin_banner_url'], ENT_QUOTES, 'UTF-8') ?>"
                     <?php if (!empty($software['plugin_banner_2x_url'])): ?>srcset="<?= htmlspecialchars((string)$software['plugin_banner_url'], ENT_QUOTES, 'UTF-8') ?> 772w, <?= htmlspecialchars((string)$software['plugin_banner_2x_url'], ENT_QUOTES, 'UTF-8') ?> 1544w" sizes="(min-width: 900px) 1000px, 100vw"<?php endif; ?>
                     alt="<?= htmlspecialchars($softwareName, ENT_QUOTES, 'UTF-8') ?> banner" loading="lazy">
-                <h2 class="h5 plugin-title-overlay"><?= htmlspecialchars($softwareName, ENT_QUOTES, 'UTF-8') ?></h2>
+            <?php endif; ?>
+            <div class="software-hero-overlay">
+                <h1 class="h3 mb-2"><?= htmlspecialchars($softwareName, ENT_QUOTES, 'UTF-8') ?></h1>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <span class="badge text-bg-<?= $severityTone ?> text-uppercase">Highest risk: <?= htmlspecialchars($overallSeverity, ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php if (!empty($software['plugin_author'])): ?>
+                        <span class="software-hero-meta">by <?= htmlspecialchars((string)$software['plugin_author'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php endif; ?>
+                </div>
+                <a href="<?= htmlspecialchars((string)$software['canonical_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="btn btn-sm btn-light">Plugin page</a>
             </div>
-        <?php endif; ?>
+        </div>
 
-        <?php if (!empty($software['plugin_author']) || !empty($software['plugin_active_installs']) || !empty($software['plugin_tested'])): ?>
-            <div class="meta-row mb-3">
-                <?php if (!empty($software['plugin_author'])): ?><span>Author: <?= htmlspecialchars((string)$software['plugin_author'], ENT_QUOTES, 'UTF-8') ?></span><?php endif; ?>
-                <?php if (!empty($software['plugin_active_installs'])): ?><span>Active installs: <?= htmlspecialchars((string)$software['plugin_active_installs'], ENT_QUOTES, 'UTF-8') ?></span><?php endif; ?>
-                <?php if (!empty($software['plugin_tested'])): ?><span>Tested with WP <?= htmlspecialchars((string)$software['plugin_tested'], ENT_QUOTES, 'UTF-8') ?></span><?php endif; ?>
-            </div>
-        <?php endif; ?>
-
-        <div class="d-flex flex-wrap gap-2 mb-2">
-            <a href="<?= htmlspecialchars((string)$software['canonical_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">Open official page</a>
+        <div class="d-flex justify-content-end">
+            <a href="/software" class="btn btn-sm btn-outline-secondary">Back to overview</a>
         </div>
 
         <?php $description = trim((string)($software['description'] ?? '')); ?>
         <?php if ($description !== ''): ?>
-            <p class="mb-0"><?= nl2br(htmlspecialchars($description, ENT_QUOTES, 'UTF-8')) ?></p>
+            <p class="mt-3 mb-0"><?= nl2br(htmlspecialchars($description, ENT_QUOTES, 'UTF-8')) ?></p>
         <?php endif; ?>
     </div>
 </section>
@@ -51,14 +45,14 @@
         <h2 class="h5">Reports for this software</h2>
         <div class="table-responsive">
             <table class="table app-table align-middle mb-0">
-                <thead><tr><th>Report ID</th><th>Submitter</th><th>Version tested</th><th>Risk</th><th>Created</th><th></th></tr></thead>
+                <thead><tr><th>Report ID</th><th>Submitter</th><th>Version tested</th><th>Risk</th><th>Submitted</th><th></th></tr></thead>
                 <tbody>
                 <?php foreach ($reports as $report): ?>
                     <tr>
                         <td>#<?= (int)$report['id'] ?></td><td><?= htmlspecialchars((string)$report['submitter_name'], ENT_QUOTES, 'UTF-8') ?></td>
                         <td><?= htmlspecialchars((string)($report['wordpress_version'] ?: '-'), ENT_QUOTES, 'UTF-8') ?></td>
                         <td><span class="badge text-bg-dark text-uppercase"><?= htmlspecialchars((string)$report['severity_resolved'], ENT_QUOTES, 'UTF-8') ?></span></td>
-                        <td><?= htmlspecialchars((string)$report['created_at'], ENT_QUOTES, 'UTF-8') ?></td>
+                        <td title="<?= htmlspecialchars((string)$report['created_at'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(View::timeAgo((string)$report['created_at']), ENT_QUOTES, 'UTF-8') ?></td>
                         <td>
                             <a href="/reports/<?= (int)$report['id'] ?><?= !empty($adminToken) ? '?admin_token=' . urlencode((string)$adminToken) : '' ?>" class="btn btn-sm btn-outline-secondary">Details</a>
                             <?php if (!empty($adminMode)): ?>
@@ -99,7 +93,7 @@
             <?php endif; ?>
             <?php foreach ($comments as $comment): ?>
                 <article class="comment-item">
-                    <div class="small text-secondary"><?= htmlspecialchars((string)$comment['author_name'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars((string)$comment['created_at'], ENT_QUOTES, 'UTF-8') ?>
+                    <div class="small text-secondary"><?= htmlspecialchars((string)$comment['author_name'], ENT_QUOTES, 'UTF-8') ?> · <span title="<?= htmlspecialchars((string)$comment['created_at'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(View::timeAgo((string)$comment['created_at']), ENT_QUOTES, 'UTF-8') ?></span>
                         <?php if ((int)($comment['is_admin_solution'] ?? 0) === 1): ?><span class="badge text-bg-success ms-2">Official</span><?php endif; ?></div>
                     <p class="mb-0"><?= nl2br(htmlspecialchars((string)$comment['comment'], ENT_QUOTES, 'UTF-8')) ?></p>
                     <?php if (!empty($adminMode)): ?><form method="post" action="/software/<?= (int)$software['id'] ?>/comments/<?= (int)$comment['id'] ?>/hide<?= !empty($adminToken) ? '?admin_token=' . urlencode((string)$adminToken) : '' ?>" class="mt-2"><input type="hidden" name="admin_token" value="<?= htmlspecialchars((string)$adminToken, ENT_QUOTES, 'UTF-8') ?>"><button class="btn btn-sm btn-outline-danger" type="submit">Hide comment</button></form><?php endif; ?>

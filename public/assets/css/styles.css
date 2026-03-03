@@ -237,6 +237,34 @@ body {
     border-radius: 6px;
 }
 
+
+.software-hero {
+    min-height: 220px;
+    background: #111827;
+}
+
+.software-hero-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0.2rem;
+    padding: 1rem;
+    background: linear-gradient(180deg, rgba(17,24,39,0.05) 25%, rgba(17,24,39,0.78) 100%);
+    color: #fff;
+}
+
+.software-hero-meta {
+    color: rgba(255,255,255,0.9);
+    font-size: 0.92rem;
+}
+
+.software-hero .btn-light {
+    width: fit-content;
+    border: 0;
+}
+
 .meta-row {
     display: flex;
     flex-wrap: wrap;
