@@ -39,7 +39,7 @@ final class SubmissionRepository
             ':slug' => $software['slug'],
             ':canonical_url' => $software['canonical_url'],
             ':name' => $software['name'],
-            ':description' => $software['description'],
+            ':description' => $software['description'] ?: null,
             ':created_at' => $now,
             ':updated_at' => $now,
         ]);
@@ -50,7 +50,7 @@ final class SubmissionRepository
     /**
      * @param array<int, array<string, mixed>> $tests
      */
-    public function createSubmission(int $softwareId, array $payload, array $tests, string $severity): void
+    public function createSubmission(int $softwareId, array $payload, array $tests, string $severity): int
     {
         $this->pdo->beginTransaction();
 
@@ -100,6 +100,8 @@ final class SubmissionRepository
             }
 
             $this->pdo->commit();
+
+            return $submissionId;
         } catch (Throwable $exception) {
             $this->pdo->rollBack();
             throw $exception;
@@ -110,7 +112,7 @@ final class SubmissionRepository
     public function latest(int $limit = 10): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT s.id, s.severity_auto, s.submitter_name, s.created_at, sw.name AS software_name
+            'SELECT s.id, s.severity_auto, s.submitter_name, s.created_at, sw.id AS software_id, sw.name AS software_name
              FROM submissions s
              JOIN software sw ON sw.id = s.software_id
              WHERE s.is_hidden = 0
@@ -121,5 +123,138 @@ final class SubmissionRepository
         $stmt->execute();
 
         return $stmt->fetchAll();
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function softwareDirectory(): array
+    {
+        return $this->pdo->query(
+            "SELECT sw.id, sw.name, sw.type, sw.canonical_url, sw.description,
+                    COUNT(s.id) AS report_count,
+                    MAX(s.created_at) AS last_report_at,
+                    SUM(CASE WHEN s.severity_auto = 'high' THEN 1 ELSE 0 END) AS high_count,
+                    SUM(CASE WHEN s.severity_auto = 'medium' THEN 1 ELSE 0 END) AS medium_count,
+                    SUM(CASE WHEN s.severity_auto = 'low' THEN 1 ELSE 0 END) AS low_count
+             FROM software sw
+             LEFT JOIN submissions s ON s.software_id = sw.id AND s.is_hidden = 0
+             GROUP BY sw.id
+             ORDER BY last_report_at DESC, sw.name ASC"
+        )->fetchAll();
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findSoftware(int $softwareId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT id, name, type, canonical_url, description, plugin_icon_url, plugin_banner_url
+             FROM software
+             WHERE id = :id
+             LIMIT 1'
+        );
+        $stmt->execute([':id' => $softwareId]);
+        $software = $stmt->fetch();
+
+        return $software === false ? null : $software;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function softwareSubmissions(int $softwareId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT id, wordpress_version, submitter_name, submitter_role, submission_comment, severity_auto, created_at
+             FROM submissions
+             WHERE software_id = :software_id AND is_hidden = 0
+             ORDER BY id DESC'
+        );
+        $stmt->execute([':software_id' => $softwareId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function softwareComments(int $softwareId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT author_name, author_role, comment, is_admin_solution, created_at
+             FROM plugin_comments
+             WHERE software_id = :software_id AND is_hidden = 0
+             ORDER BY id DESC'
+        );
+        $stmt->execute([':software_id' => $softwareId]);
+
+        return $stmt->fetchAll();
+    }
+
+    public function addSoftwareComment(int $softwareId, string $authorName, string $comment): void
+    {
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO plugin_comments (software_id, author_name, author_role, comment, is_admin_solution, is_hidden, created_at)
+             VALUES (:software_id, :author_name, 'user', :comment, 0, 0, :created_at)"
+        );
+        $stmt->execute([
+            ':software_id' => $softwareId,
+            ':author_name' => $authorName,
+            ':comment' => $comment,
+            ':created_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /** @return array<string, mixed>|null */
+    public function findReport(int $submissionId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT s.id, s.software_id, s.wordpress_version, s.submitter_name, s.submitter_role, s.submission_comment,
+                    s.severity_auto, s.created_at, sw.name AS software_name, sw.canonical_url AS software_url
+             FROM submissions s
+             JOIN software sw ON sw.id = s.software_id
+             WHERE s.id = :id AND s.is_hidden = 0
+             LIMIT 1'
+        );
+        $stmt->execute([':id' => $submissionId]);
+        $report = $stmt->fetch();
+
+        return $report === false ? null : $report;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function reportTests(int $submissionId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT email_address, expected_valid, actual_result, failure_detected, severity_weight
+             FROM submission_tests
+             WHERE submission_id = :submission_id
+             ORDER BY id ASC'
+        );
+        $stmt->execute([':submission_id' => $submissionId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function reportComments(int $submissionId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT author_name, author_role, comment, created_at
+             FROM submission_comments
+             WHERE submission_id = :submission_id AND is_hidden = 0
+             ORDER BY id DESC'
+        );
+        $stmt->execute([':submission_id' => $submissionId]);
+
+        return $stmt->fetchAll();
+    }
+
+    public function addReportComment(int $submissionId, string $authorName, string $comment): void
+    {
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO submission_comments (submission_id, author_name, author_role, comment, is_hidden, created_at)
+             VALUES (:submission_id, :author_name, 'user', :comment, 0, :created_at)"
+        );
+        $stmt->execute([
+            ':submission_id' => $submissionId,
+            ':author_name' => $authorName,
+            ':comment' => $comment,
+            ':created_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+        ]);
     }
 }

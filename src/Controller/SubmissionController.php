@@ -11,8 +11,17 @@ final class SubmissionController
     ) {
     }
 
-    /** @return string */
-    public function store(array $post): string
+    public function create(?string $flash = null, string $flashType = 'info'): void
+    {
+        View::render('submit-report', [
+            'templates' => $this->templateRepository->all(),
+            'flash' => $flash,
+            'flashType' => $flashType,
+        ]);
+    }
+
+    /** @return array{message: string, type: string} */
+    public function store(array $post): array
     {
         $software = [
             'name' => trim((string)($post['software_name'] ?? '')),
@@ -31,11 +40,11 @@ final class SubmissionController
         ];
 
         if ($software['name'] === '' || $software['canonical_url'] === '' || $payload['submitter_name'] === '' || $payload['submitter_email'] === '') {
-            return 'Please fill all required fields.';
+            return ['message' => 'Please fill all required fields.', 'type' => 'danger'];
         }
 
         if ($software['type'] === 'wp_plugin' && $payload['wordpress_version'] === '') {
-            return 'WordPress version is required for plugin submissions.';
+            return ['message' => 'WordPress version is required for plugin submissions.', 'type' => 'danger'];
         }
 
         $templates = $this->templateRepository->all();
@@ -59,13 +68,16 @@ final class SubmissionController
         }
 
         if ($tests === []) {
-            return 'Please record at least one test result.';
+            return ['message' => 'Please record at least one test result.', 'type' => 'danger'];
         }
 
         $severity = $this->severityCalculator->calculate($tests);
         $softwareId = $this->submissionRepository->findOrCreateSoftware($software);
-        $this->submissionRepository->createSubmission($softwareId, $payload, $tests, $severity);
+        $submissionId = $this->submissionRepository->createSubmission($softwareId, $payload, $tests, $severity);
 
-        return 'Submission saved. Auto severity: ' . strtoupper($severity);
+        return [
+            'message' => sprintf('Submission #%d saved. Auto severity: %s.', $submissionId, strtoupper($severity)),
+            'type' => 'success',
+        ];
     }
 }
