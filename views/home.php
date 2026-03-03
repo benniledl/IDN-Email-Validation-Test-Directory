@@ -18,17 +18,21 @@
                 <input id="software_name" name="software_name" class="form-control" required>
             </div>
             <div class="col-md-6">
-                <label for="software_url" class="form-label">Software URL *</label>
+                <label for="software_url" class="form-label">Canonical URL *</label>
                 <input id="software_url" name="software_url" type="url" class="form-control" required>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label for="software_type" class="form-label">Software type</label>
                 <select id="software_type" name="software_type" class="form-select">
                     <option value="wp_plugin">WordPress plugin</option>
                     <option value="other" selected>Other software</option>
                 </select>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
+                <label for="wordpress_version" class="form-label">WordPress version tested</label>
+                <input id="wordpress_version" name="wordpress_version" class="form-control" placeholder="e.g. 6.8.1">
+            </div>
+            <div class="col-md-4">
                 <label for="submitter_role" class="form-label">Role</label>
                 <select id="submitter_role" name="submitter_role" class="form-select">
                     <option value="">Prefer not to say</option>
@@ -62,17 +66,22 @@
                             <th>Email template</th>
                             <th>Expected</th>
                             <th>Severity bucket</th>
-                            <th>Complexity</th>
                             <th>Your result</th>
                         </tr>
                         </thead>
                         <tbody>
                         <?php foreach ($templates as $template): ?>
+                            <?php
+                            $severityLabel = match ((int)$template['severity_weight']) {
+                                3 => 'high',
+                                2 => 'medium',
+                                default => 'low',
+                            };
+                            ?>
                             <tr>
                                 <td><code><?= htmlspecialchars((string)$template['email_address'], ENT_QUOTES, 'UTF-8') ?></code></td>
                                 <td><?= (int)$template['expected_valid'] === 1 ? 'Valid' : 'Invalid' ?></td>
-                                <td><span class="badge text-bg-secondary text-uppercase"><?= htmlspecialchars((string)$template['severity_level'], ENT_QUOTES, 'UTF-8') ?></span></td>
-                                <td><?= htmlspecialchars((string)$template['complexity_label'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td><span class="badge text-bg-secondary text-uppercase"><?= htmlspecialchars($severityLabel, ENT_QUOTES, 'UTF-8') ?></span></td>
                                 <td>
                                     <select name="result_<?= (int)$template['id'] ?>" class="form-select form-select-sm result-select">
                                         <option value="not_tested" selected>Not tested</option>

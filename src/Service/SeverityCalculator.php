@@ -4,19 +4,12 @@ declare(strict_types=1);
 
 final class SeverityCalculator
 {
-    private const ORDER = [
-        'none' => 0,
-        'low' => 1,
-        'medium' => 2,
-        'high' => 3,
-    ];
-
     /**
-     * @param array<int, array{severity_level: string, expected_valid: int, actual_result: string}> $tests
+     * @param array<int, array{severity_weight: int, expected_valid: int, actual_result: string}> $tests
      */
     public function calculate(array $tests): string
     {
-        $highest = 'none';
+        $highestWeight = 0;
 
         foreach ($tests as $test) {
             $expectedValid = (int)$test['expected_valid'] === 1;
@@ -27,12 +20,17 @@ final class SeverityCalculator
                 continue;
             }
 
-            $severity = strtolower($test['severity_level']);
-            if ((self::ORDER[$severity] ?? 0) > self::ORDER[$highest]) {
-                $highest = $severity;
+            $weight = (int)$test['severity_weight'];
+            if ($weight > $highestWeight) {
+                $highestWeight = $weight;
             }
         }
 
-        return $highest;
+        return match ($highestWeight) {
+            3 => 'high',
+            2 => 'medium',
+            1 => 'low',
+            default => 'none',
+        };
     }
 }
