@@ -44,3 +44,18 @@ This keeps the README focused on setup while preserving the full specification.
 - **Low**: complex-script IDN cases fail (`用户@例子.广告`)
 
 The final submission severity is the highest failed template severity.
+
+
+## Admin moderation
+
+Admin moderation is token-based.
+
+- You can continue using `ADMIN_TOKEN` from environment variables as a global admin token.
+- You can now add additional admin users from the software detail page while in admin mode (`?admin_token=...`).
+- Admins can hide:
+  - software comments
+  - report comments
+  - reports/submissions
+  - custom software entries (`type = other`)
+
+WordPress plugins (`type = wp_plugin`) remain visible and are not hideable via the custom-software hide action.

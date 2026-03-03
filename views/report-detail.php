@@ -33,6 +33,10 @@
         </div>
 
         <?php if (!empty($adminMode)): ?>
+            <form method="post" action="/reports/<?= (int)$report['id'] ?>/admin/hide<?= !empty($adminToken) ? '?admin_token=' . urlencode((string)$adminToken) : '' ?>" class="mt-3">
+                <input type="hidden" name="admin_token" value="<?= htmlspecialchars((string)$adminToken, ENT_QUOTES, 'UTF-8') ?>">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Hide this report</button>
+            </form>
             <form method="post" action="/reports/<?= (int)$report['id'] ?>/admin/severity<?= !empty($adminToken) ? '?admin_token=' . urlencode((string)$adminToken) : '' ?>" class="row g-2 mt-3 border rounded p-3 bg-white">
                 <div class="col-md-6">
                     <label for="severity_admin_override" class="form-label mb-1">Admin risk override</label>

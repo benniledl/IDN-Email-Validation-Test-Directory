@@ -13,10 +13,13 @@ final class DirectoryController
     public function softwareIndex(?string $flash = null, string $flashType = 'info'): void
     {
         $search = trim((string)($_GET['q'] ?? ''));
+        $adminMode = $this->isAdminRequest();
 
         View::render('software-index', [
             'softwareItems' => $this->enrichSoftwareDirectory($this->submissionRepository->softwareDirectory($search)),
             'search' => $search,
+            'adminMode' => $adminMode,
+            'adminToken' => $adminMode ? trim((string)($_GET['admin_token'] ?? ($_POST['admin_token'] ?? ''))) : '',
             'flash' => $flash,
             'flashType' => $flashType,
         ]);
@@ -37,6 +40,7 @@ final class DirectoryController
             'software' => $this->enrichSoftwareDetail($software),
             'reports' => $this->submissionRepository->softwareSubmissions($softwareId),
             'comments' => $this->submissionRepository->softwareComments($softwareId),
+            'admins' => $adminMode ? $this->submissionRepository->activeAdmins() : [],
             'adminMode' => $adminMode,
             'adminToken' => $adminMode ? trim((string)($_GET['admin_token'] ?? ($_POST['admin_token'] ?? ''))) : '',
             'flash' => $flash,
@@ -188,6 +192,20 @@ final class DirectoryController
     }
 
     /** @return array{message: string, type: string} */
+    public function adminHideCustomSoftware(int $softwareId): array
+    {
+        if (!$this->isAdminRequest()) {
+            return ['message' => 'Admin token missing or invalid.', 'type' => 'danger'];
+        }
+
+        if (!$this->submissionRepository->hideCustomSoftware($softwareId)) {
+            return ['message' => 'Only custom software can be hidden.', 'type' => 'danger'];
+        }
+
+        return ['message' => 'Custom software hidden.', 'type' => 'success'];
+    }
+
+    /** @return array{message: string, type: string} */
     public function adminOverrideSeverity(int $submissionId, array $post): array
     {
         if (!$this->isAdminRequest()) {
@@ -251,15 +269,44 @@ final class DirectoryController
         return ['message' => 'Official solution comment posted.', 'type' => 'success'];
     }
 
+    /** @return array{message: string, type: string} */
+    public function adminAddUser(array $post): array
+    {
+        if (!$this->isAdminRequest()) {
+            return ['message' => 'Admin token missing or invalid.', 'type' => 'danger'];
+        }
+
+        $name = trim((string)($post['name'] ?? ''));
+        $email = trim((string)($post['email'] ?? ''));
+        $token = trim((string)($post['new_admin_token'] ?? ''));
+
+        if ($name === '' || $email === '' || $token === '') {
+            return ['message' => 'Admin name, email, and token are required.', 'type' => 'danger'];
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['message' => 'Admin email is invalid.', 'type' => 'danger'];
+        }
+
+        if (!$this->submissionRepository->addAdminUser($name, $email, $token)) {
+            return ['message' => 'Could not add admin user (email/token may already exist).', 'type' => 'danger'];
+        }
+
+        return ['message' => 'Admin user added successfully.', 'type' => 'success'];
+    }
+
     private function isAdminRequest(): bool
     {
-        $configuredToken = trim((string)getenv('ADMIN_TOKEN'));
-        if ($configuredToken === '') {
+        $providedToken = trim((string)($_POST['admin_token'] ?? ($_GET['admin_token'] ?? '')));
+        if ($providedToken === '') {
             return false;
         }
 
-        $providedToken = trim((string)($_POST['admin_token'] ?? ($_GET['admin_token'] ?? '')));
+        $configuredToken = trim((string)getenv('ADMIN_TOKEN'));
+        if ($configuredToken !== '' && hash_equals($configuredToken, $providedToken)) {
+            return true;
+        }
 
-        return hash_equals($configuredToken, $providedToken);
+        return $this->submissionRepository->adminTokenExists($providedToken);
     }
 }

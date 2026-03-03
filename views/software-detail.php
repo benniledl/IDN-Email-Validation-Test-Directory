@@ -25,12 +25,18 @@
                         <span class="software-hero-meta">by <?= htmlspecialchars((string)$software['plugin_author'], ENT_QUOTES, 'UTF-8') ?></span>
                     <?php endif; ?>
                 </div>
-                <a href="<?= htmlspecialchars((string)$software['canonical_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="btn btn-sm btn-light">Plugin page</a>
+                <a href="<?= htmlspecialchars((string)$software['canonical_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="btn btn-sm btn-light"><?= (string)$software['type'] === 'wp_plugin' ? 'Plugin page' : 'Official page' ?></a>
             </div>
         </div>
 
-        <div class="d-flex justify-content-end">
-            <a href="/software" class="btn btn-sm btn-outline-secondary">Back to overview</a>
+        <div class="d-flex justify-content-end gap-2">
+            <?php if (!empty($adminMode) && (string)$software['type'] === 'other'): ?>
+                <form method="post" action="/software/<?= (int)$software['id'] ?>/admin/hide<?= !empty($adminToken) ? '?admin_token=' . urlencode((string)$adminToken) : '' ?>" class="d-inline">
+                    <input type="hidden" name="admin_token" value="<?= htmlspecialchars((string)$adminToken, ENT_QUOTES, 'UTF-8') ?>">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Hide custom software</button>
+                </form>
+            <?php endif; ?>
+            <a href="/software<?= !empty($adminToken) ? '?admin_token=' . urlencode((string)$adminToken) : '' ?>" class="btn btn-sm btn-outline-secondary">Back to overview</a>
         </div>
 
         <?php $description = trim((string)($software['description'] ?? '')); ?>
@@ -99,6 +105,25 @@
                     <?php if (!empty($adminMode)): ?><form method="post" action="/software/<?= (int)$software['id'] ?>/comments/<?= (int)$comment['id'] ?>/hide<?= !empty($adminToken) ? '?admin_token=' . urlencode((string)$adminToken) : '' ?>" class="mt-2"><input type="hidden" name="admin_token" value="<?= htmlspecialchars((string)$adminToken, ENT_QUOTES, 'UTF-8') ?>"><button class="btn btn-sm btn-outline-danger" type="submit">Hide comment</button></form><?php endif; ?>
                 </article>
             <?php endforeach; ?>
+
+            <?php if (!empty($adminMode)): ?>
+                <div class="border rounded p-3 bg-white mt-4">
+                    <h3 class="h6">Admin users</h3>
+                    <ul class="mb-3">
+                        <?php foreach ($admins as $admin): ?>
+                            <li><?= htmlspecialchars((string)$admin['name'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars((string)$admin['email'], ENT_QUOTES, 'UTF-8') ?>)</li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <form method="post" action="/admin/users<?= !empty($adminToken) ? '?admin_token=' . urlencode((string)$adminToken) : '' ?>" class="row g-2">
+                        <input type="hidden" name="software_id" value="<?= (int)$software['id'] ?>">
+                        <input type="hidden" name="admin_token" value="<?= htmlspecialchars((string)$adminToken, ENT_QUOTES, 'UTF-8') ?>">
+                        <div class="col-md-3"><input class="form-control" name="name" placeholder="Admin name"></div>
+                        <div class="col-md-3"><input class="form-control" name="email" type="email" placeholder="admin@example.com"></div>
+                        <div class="col-md-4"><input class="form-control" name="new_admin_token" placeholder="New admin token"></div>
+                        <div class="col-md-2 d-grid"><button class="btn btn-outline-primary" type="submit">Add admin</button></div>
+                    </form>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 </section>

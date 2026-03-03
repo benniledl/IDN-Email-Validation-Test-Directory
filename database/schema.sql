@@ -10,12 +10,22 @@ CREATE TABLE IF NOT EXISTS software (
     wp_version_tested TEXT NULL,
     plugin_icon_url TEXT NULL,
     plugin_banner_url TEXT NULL,
+    is_hidden INTEGER NOT NULL DEFAULT 0 CHECK (is_hidden IN (0, 1)),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_software_unique_identity
     ON software (type, COALESCE(slug, canonical_url));
+
+CREATE TABLE IF NOT EXISTS admin_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    admin_token TEXT NOT NULL UNIQUE,
+    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
 CREATE TABLE IF NOT EXISTS template_emails (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -80,6 +80,26 @@ if ($method === 'POST' && preg_match('#^/software/(\d+)/comments/(\d+)/hide$#', 
     exit;
 }
 
+
+if ($method === 'POST' && preg_match('#^/software/(\d+)/admin/hide$#', $path, $matches) === 1) {
+    $softwareId = (int)$matches[1];
+    $flash = $directoryController->adminHideCustomSoftware($softwareId);
+    $directoryController->softwareIndex($flash['message'], $flash['type']);
+    exit;
+}
+
+if ($method === 'POST' && $path === '/admin/users') {
+    $flash = $directoryController->adminAddUser($_POST);
+    $redirectSoftware = isset($_POST['software_id']) ? (int)$_POST['software_id'] : 0;
+    if ($redirectSoftware > 0) {
+        $directoryController->softwareDetail($redirectSoftware, $flash['message'], $flash['type']);
+        exit;
+    }
+
+    $directoryController->softwareIndex($flash['message'], $flash['type']);
+    exit;
+}
+
 if ($method === 'GET' && preg_match('#^/reports/(\d+)$#', $path, $matches) === 1) {
     $directoryController->reportDetail((int)$matches[1]);
     exit;
