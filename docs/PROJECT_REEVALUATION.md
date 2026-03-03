@@ -35,11 +35,6 @@ This document re-checks the implementation against `docs/PROJECT_DEFINITION.md` 
 
 ## 4) Privacy requirements
 
-- ✅ Submit form has an explicit privacy notice block that states:
-  - what is public,
-  - what is private,
-  - immediate publication,
-  - and admin hide capability.
 - ✅ Submitter email is stored and not displayed on public pages.
 
 ## 5) Moderation/admin operations
