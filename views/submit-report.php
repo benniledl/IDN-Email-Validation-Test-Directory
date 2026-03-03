@@ -1,5 +1,5 @@
-<section class="card border-0 shadow-sm" aria-labelledby="submit-title">
-    <div class="card-body p-4">
+<section class="app-card" aria-labelledby="submit-title">
+    <div class="app-card-body">
         <h1 id="submit-title" class="h4 mb-3">Submit a report</h1>
         <p class="text-secondary">Provide software details, fill your tested outcomes, and publish the report instantly.</p>
 
@@ -8,7 +8,7 @@
         <?php endif; ?>
 
 
-        <div class="alert alert-info" role="note">
+        <div class="alert" role="note">
             <strong>Privacy notice:</strong> Your name, role, comment, and test results are published immediately.
             Your email address stays private (admin-only). Admins can hide submissions or comments later for moderation.
         </div>
@@ -71,7 +71,7 @@
             <div class="col-12">
                 <h2 class="h6 mt-2">Template results</h2>
                 <div class="table-responsive">
-                    <table class="table table-sm align-middle">
+                    <table class="table app-table align-middle">
                         <thead>
                         <tr>
                             <th>Email template</th>
