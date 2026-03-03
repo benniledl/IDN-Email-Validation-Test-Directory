@@ -25,12 +25,32 @@ final class SubmissionRepository
 
         $existing = $stmt->fetch();
         if ($existing !== false) {
+            $update = $this->pdo->prepare(
+                'UPDATE software
+                 SET canonical_url = :canonical_url,
+                     name = :name,
+                     description = :description,
+                     plugin_icon_url = :plugin_icon_url,
+                     plugin_banner_url = :plugin_banner_url,
+                     updated_at = :updated_at
+                 WHERE id = :id'
+            );
+            $update->execute([
+                ':id' => (int)$existing['id'],
+                ':canonical_url' => $software['canonical_url'],
+                ':name' => $software['name'],
+                ':description' => $software['description'] ?: null,
+                ':plugin_icon_url' => $software['plugin_icon_url'] ?? null,
+                ':plugin_banner_url' => $software['plugin_banner_url'] ?? null,
+                ':updated_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+            ]);
+
             return (int)$existing['id'];
         }
 
         $insert = $this->pdo->prepare(
-            'INSERT INTO software (type, slug, canonical_url, name, description, created_at, updated_at)
-             VALUES (:type, :slug, :canonical_url, :name, :description, :created_at, :updated_at)'
+            'INSERT INTO software (type, slug, canonical_url, name, description, plugin_icon_url, plugin_banner_url, created_at, updated_at)
+             VALUES (:type, :slug, :canonical_url, :name, :description, :plugin_icon_url, :plugin_banner_url, :created_at, :updated_at)'
         );
 
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
@@ -40,6 +60,8 @@ final class SubmissionRepository
             ':canonical_url' => $software['canonical_url'],
             ':name' => $software['name'],
             ':description' => $software['description'] ?: null,
+            ':plugin_icon_url' => $software['plugin_icon_url'] ?? null,
+            ':plugin_banner_url' => $software['plugin_banner_url'] ?? null,
             ':created_at' => $now,
             ':updated_at' => $now,
         ]);

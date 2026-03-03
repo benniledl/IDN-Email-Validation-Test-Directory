@@ -3,3 +3,24 @@ body { min-height: 100vh; }
 .app-shell { max-width: 1120px; }
 code { font-size: 0.9rem; }
 .comment-item { padding: 0.75rem 0; border-top: 1px solid #e9ecef; }
+
+.software-type-toggle {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+.software-type-option {
+    border: 1px solid #ced4da;
+    border-radius: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-check:checked + .software-type-option {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    background: #f0f6ff;
+}
