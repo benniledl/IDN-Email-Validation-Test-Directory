@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../src/Support/View.php';
 require_once __DIR__ . '/../src/Service/SeverityCalculator.php';
+require_once __DIR__ . '/../src/Service/WordPressPluginService.php';
 require_once __DIR__ . '/../src/Repository/TemplateEmailRepository.php';
 require_once __DIR__ . '/../src/Repository/SubmissionRepository.php';
 require_once __DIR__ . '/../src/Controller/HomeController.php';
@@ -15,9 +16,10 @@ $pdo = require __DIR__ . '/../config/database.php';
 $templateRepository = new TemplateEmailRepository($pdo);
 $submissionRepository = new SubmissionRepository($pdo);
 $severityCalculator = new SeverityCalculator();
+$wordPressPluginService = new WordPressPluginService();
 
 $homeController = new HomeController($submissionRepository);
-$submissionController = new SubmissionController($templateRepository, $submissionRepository, $severityCalculator);
+$submissionController = new SubmissionController($templateRepository, $submissionRepository, $severityCalculator, $wordPressPluginService);
 $directoryController = new DirectoryController($submissionRepository);
 
 $method = $_SERVER['REQUEST_METHOD'];

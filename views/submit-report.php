@@ -8,20 +8,30 @@
         <?php endif; ?>
 
         <form method="post" action="/submissions" class="row g-3" novalidate>
-            <div class="col-md-6">
+            <div class="col-12">
+                <label class="form-label d-block">Software type</label>
+                <div class="software-type-toggle" role="radiogroup" aria-label="Software type">
+                    <input type="radio" class="btn-check" name="software_type" id="software_type_wp" value="wp_plugin">
+                    <label class="software-type-option" for="software_type_wp">
+                        <span class="fw-semibold">WordPress plugin</span>
+                        <small class="text-secondary d-block">Fetches title, description, and image from WordPress.org.</small>
+                    </label>
+
+                    <input type="radio" class="btn-check" name="software_type" id="software_type_other" value="other" checked>
+                    <label class="software-type-option" for="software_type_other">
+                        <span class="fw-semibold">Other software</span>
+                        <small class="text-secondary d-block">Manually provide software details.</small>
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-6" id="software_name_group">
                 <label for="software_name" class="form-label">Software name *</label>
                 <input id="software_name" name="software_name" class="form-control" required>
             </div>
             <div class="col-md-6">
                 <label for="software_url" class="form-label">Canonical URL *</label>
-                <input id="software_url" name="software_url" type="url" class="form-control" required>
-            </div>
-            <div class="col-md-4">
-                <label for="software_type" class="form-label">Software type</label>
-                <select id="software_type" name="software_type" class="form-select">
-                    <option value="wp_plugin">WordPress plugin</option>
-                    <option value="other" selected>Other software</option>
-                </select>
+                <input id="software_url" name="software_url" class="form-control" required>
+                <div class="form-text">For WordPress plugins, you can paste a slug (e.g. <code>contact-form-7</code>) or any WordPress.org plugin URL.</div>
             </div>
             <div class="col-md-4">
                 <label for="wordpress_version" class="form-label">WordPress version tested</label>
@@ -43,7 +53,7 @@
                 <label for="submitter_email" class="form-label">Your email (private) *</label>
                 <input id="submitter_email" name="submitter_email" type="email" class="form-control" required>
             </div>
-            <div class="col-12">
+            <div class="col-12" id="software_description_group">
                 <label for="software_description" class="form-label">Software description</label>
                 <textarea id="software_description" name="software_description" class="form-control" rows="2"></textarea>
             </div>
