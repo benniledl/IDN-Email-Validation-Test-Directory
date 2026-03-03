@@ -51,7 +51,7 @@ final class SubmissionController
         }
 
         if ($software['type'] === 'wp_plugin' && $payload['wordpress_version'] === '') {
-            return ['message' => 'WordPress version is required for plugin submissions.', 'type' => 'danger'];
+            return ['message' => 'Version tested is required for plugin submissions.', 'type' => 'danger'];
         }
 
         $templates = $this->templateRepository->all();

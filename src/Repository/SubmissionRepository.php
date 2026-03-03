@@ -151,7 +151,7 @@ final class SubmissionRepository
     public function softwareDirectory(): array
     {
         return $this->pdo->query(
-            "SELECT sw.id, sw.name, sw.type, sw.canonical_url, sw.description,
+            "SELECT sw.id, sw.name, sw.slug, sw.type, sw.canonical_url, sw.description, sw.plugin_icon_url,
                     COUNT(s.id) AS report_count,
                     MAX(s.created_at) AS last_report_at,
                     SUM(CASE WHEN s.severity_auto = 'high' THEN 1 ELSE 0 END) AS high_count,
