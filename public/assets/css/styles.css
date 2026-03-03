@@ -287,18 +287,6 @@ body {
     cursor: help;
 }
 
-.privacy-notice {
-    border: 1px solid #bfdbfe;
-    background: #eff6ff;
-    color: #1e3a8a;
-    border-radius: 8px;
-    padding: 0.85rem 1rem;
-}
-
-.privacy-notice ul {
-    padding-left: 1.1rem;
-}
-
 .report-summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
