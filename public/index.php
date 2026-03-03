@@ -39,6 +39,12 @@ if ($method === 'GET' && $path === '/submit-report') {
 
 if ($method === 'POST' && $path === '/submissions') {
     $flash = $submissionController->store($_POST);
+
+    if (($flash['type'] ?? 'info') === 'success' && !empty($flash['submission_id'])) {
+        header('Location: /reports/' . (int)$flash['submission_id']);
+        exit;
+    }
+
     $submissionController->create($flash['message'], $flash['type']);
     exit;
 }

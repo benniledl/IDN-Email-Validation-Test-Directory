@@ -1,7 +1,7 @@
 <section class="app-card" aria-labelledby="software-title">
     <div class="app-card-body">
         <div class="section-heading">
-            <h1 id="software-title" class="h4 mb-0">Plugin/software overview</h1>
+            <h1 id="software-title" class="h4 mb-0">Software overview</h1>
             <a href="/submit-report" class="btn btn-sm btn-primary">Submit report</a>
         </div>
 
@@ -46,7 +46,7 @@
                     <div class="directory-plugin-body">
                         <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
                             <h2 class="h4 mb-0 directory-plugin-title"><a href="/software/<?= (int)$item['id'] ?>"><?= htmlspecialchars($decodedName, ENT_QUOTES, 'UTF-8') ?></a></h2>
-                            <span class="badge text-bg-<?= $severityTone ?> text-uppercase">Overall: <?= htmlspecialchars($overallSeverity, ENT_QUOTES, 'UTF-8') ?></span>
+                            <span class="badge text-bg-<?= $severityTone ?> text-uppercase">Risk: <?= htmlspecialchars($overallSeverity, ENT_QUOTES, 'UTF-8') ?></span>
                         </div>
 
                         <?php if ($description !== ''): ?><p class="text-secondary mb-3"><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
@@ -56,10 +56,10 @@
                             <?php if (!empty($item['plugin_active_installs'])): ?><span>📦 <?= htmlspecialchars((string)$item['plugin_active_installs'], ENT_QUOTES, 'UTF-8') ?></span><?php endif; ?>
                             <?php if (!empty($item['plugin_tested'])): ?><span>🧪 Tested with <?= htmlspecialchars((string)$item['plugin_tested'], ENT_QUOTES, 'UTF-8') ?></span><?php endif; ?>
                             <span>📝 <?= (int)$item['report_count'] ?> report(s)</span>
-                            <span>⚠️ <?= (int)$item['high_count'] ?>/<?= (int)$item['medium_count'] ?>/<?= (int)$item['low_count'] ?> (high/med/low)</span>
+                            <span>Risk split H/M/L: <?= (int)$item['high_count'] ?>/<?= (int)$item['medium_count'] ?>/<?= (int)$item['low_count'] ?></span>
                         </div>
 
-                        <a href="<?= htmlspecialchars((string)$item['canonical_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="small text-decoration-none d-inline-block mt-3"><?= htmlspecialchars((string)$item['canonical_url'], ENT_QUOTES, 'UTF-8') ?></a>
+                        <a href="<?= htmlspecialchars((string)$item['canonical_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary mt-3">Official page</a>
                     </div>
                 </article>
             <?php endforeach; ?>
