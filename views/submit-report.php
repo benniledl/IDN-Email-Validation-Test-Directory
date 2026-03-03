@@ -34,7 +34,7 @@
                 <div class="form-text">For WordPress plugins, you can paste a slug (e.g. <code>contact-form-7</code>) or any WordPress.org plugin URL.</div>
             </div>
             <div class="col-md-4">
-                <label for="wordpress_version" class="form-label">WordPress version tested</label>
+                <label for="wordpress_version" class="form-label">Version tested</label>
                 <input id="wordpress_version" name="wordpress_version" class="form-control" placeholder="e.g. 6.8.1">
             </div>
             <div class="col-md-4">

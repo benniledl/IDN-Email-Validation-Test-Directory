@@ -4,10 +4,11 @@
             <h1 class="h4 mb-0">Report #<?= (int)$report['id'] ?></h1>
             <a href="/software/<?= (int)$report['software_id'] ?>" class="btn btn-sm btn-outline-secondary">Back to software</a>
         </div>
-        <p class="mb-1"><strong>Software:</strong> <a href="/software/<?= (int)$report['software_id'] ?>"><?= htmlspecialchars((string)$report['software_name'], ENT_QUOTES, 'UTF-8') ?></a></p>
+        <?php $reportSoftwareName = html_entity_decode((string)$report['software_name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'); ?>
+        <p class="mb-1"><strong>Software:</strong> <a href="/software/<?= (int)$report['software_id'] ?>"><?= htmlspecialchars($reportSoftwareName, ENT_QUOTES, 'UTF-8') ?></a></p>
         <p class="mb-1"><strong>Submitter:</strong> <?= htmlspecialchars((string)$report['submitter_name'], ENT_QUOTES, 'UTF-8') ?></p>
         <p class="mb-1"><strong>Severity:</strong> <span class="badge text-bg-dark text-uppercase"><?= htmlspecialchars((string)$report['severity_auto'], ENT_QUOTES, 'UTF-8') ?></span></p>
-        <p class="mb-1"><strong>WordPress version:</strong> <?= htmlspecialchars((string)($report['wordpress_version'] ?: '-'), ENT_QUOTES, 'UTF-8') ?></p>
+        <p class="mb-1"><strong>Version tested:</strong> <?= htmlspecialchars((string)($report['wordpress_version'] ?: '-'), ENT_QUOTES, 'UTF-8') ?></p>
         <p class="mb-0"><strong>Comment:</strong> <?= nl2br(htmlspecialchars((string)($report['submission_comment'] ?: 'No submitter comment.'), ENT_QUOTES, 'UTF-8')) ?></p>
     </div>
 </section>

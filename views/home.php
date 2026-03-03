@@ -30,7 +30,8 @@
                 <tbody>
                 <?php foreach ($history as $item): ?>
                     <tr>
-                        <td><a href="/software/<?= (int)$item['software_id'] ?>"><?= htmlspecialchars((string)$item['software_name'], ENT_QUOTES, 'UTF-8') ?></a></td>
+                        <?php $historySoftwareName = html_entity_decode((string)$item['software_name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'); ?>
+                        <td><a href="/software/<?= (int)$item['software_id'] ?>"><?= htmlspecialchars($historySoftwareName, ENT_QUOTES, 'UTF-8') ?></a></td>
                         <td><?= htmlspecialchars((string)$item['submitter_name'], ENT_QUOTES, 'UTF-8') ?></td>
                         <td><span class="badge text-bg-dark text-uppercase"><?= htmlspecialchars((string)$item['severity_auto'], ENT_QUOTES, 'UTF-8') ?></span></td>
                         <td><?= htmlspecialchars((string)$item['created_at'], ENT_QUOTES, 'UTF-8') ?></td>

@@ -2,8 +2,16 @@
     <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
             <div>
-                <h1 class="h4 mb-1"><?= htmlspecialchars((string)$software['name'], ENT_QUOTES, 'UTF-8') ?></h1>
+                <?php $softwareName = html_entity_decode((string)$software['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'); ?>
+                <h1 class="h4 mb-1"><?= htmlspecialchars($softwareName, ENT_QUOTES, 'UTF-8') ?></h1>
                 <div class="text-secondary small"><?= htmlspecialchars((string)$software['type'], ENT_QUOTES, 'UTF-8') ?></div>
+                <?php if (!empty($software['plugin_author']) || !empty($software['plugin_active_installs']) || !empty($software['plugin_tested'])): ?>
+                    <div class="small text-secondary mt-1">
+                        <?php if (!empty($software['plugin_author'])): ?><span class="me-3">👤 <?= htmlspecialchars((string)$software['plugin_author'], ENT_QUOTES, 'UTF-8') ?></span><?php endif; ?>
+                        <?php if (!empty($software['plugin_active_installs'])): ?><span class="me-3">📦 <?= htmlspecialchars((string)$software['plugin_active_installs'], ENT_QUOTES, 'UTF-8') ?></span><?php endif; ?>
+                        <?php if (!empty($software['plugin_tested'])): ?><span>🧪 Tested with <?= htmlspecialchars((string)$software['plugin_tested'], ENT_QUOTES, 'UTF-8') ?></span><?php endif; ?>
+                    </div>
+                <?php endif; ?>
             </div>
             <a href="/software" class="btn btn-sm btn-outline-secondary">Back to overview</a>
         </div>
@@ -23,7 +31,7 @@
                 <tr>
                     <th>Report ID</th>
                     <th>Submitter</th>
-                    <th>WP version</th>
+                    <th>Version tested</th>
                     <th>Severity</th>
                     <th>Created</th>
                     <th></th>

@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 final class DirectoryController
 {
-    public function __construct(private SubmissionRepository $submissionRepository)
+    public function __construct(
+        private SubmissionRepository $submissionRepository,
+        private WordPressPluginService $wordPressPluginService
+    )
     {
     }
 
     public function softwareIndex(?string $flash = null, string $flashType = 'info'): void
     {
         View::render('software-index', [
-            'softwareItems' => $this->submissionRepository->softwareDirectory(),
+            'softwareItems' => $this->enrichSoftwareDirectory($this->submissionRepository->softwareDirectory()),
             'flash' => $flash,
             'flashType' => $flashType,
         ]);
@@ -27,7 +30,7 @@ final class DirectoryController
         }
 
         View::render('software-detail', [
-            'software' => $software,
+            'software' => $this->enrichSoftwareDetail($software),
             'reports' => $this->submissionRepository->softwareSubmissions($softwareId),
             'comments' => $this->submissionRepository->softwareComments($softwareId),
             'flash' => $flash,
@@ -51,6 +54,78 @@ final class DirectoryController
             'flash' => $flash,
             'flashType' => $flashType,
         ]);
+    }
+
+
+    /** @param array<int, array<string, mixed>> $softwareItems
+     *  @return array<int, array<string, mixed>>
+     */
+    private function enrichSoftwareDirectory(array $softwareItems): array
+    {
+        foreach ($softwareItems as &$item) {
+            $item = $this->appendPluginMeta($item);
+        }
+
+        return $softwareItems;
+    }
+
+    /** @param array<string, mixed> $software
+     *  @return array<string, mixed>
+     */
+    private function enrichSoftwareDetail(array $software): array
+    {
+        return $this->appendPluginMeta($software);
+    }
+
+    /** @param array<string, mixed> $item
+     *  @return array<string, mixed>
+     */
+    private function appendPluginMeta(array $item): array
+    {
+        if (($item['type'] ?? '') !== 'wp_plugin') {
+            return $item;
+        }
+
+        $slug = trim((string)($item['slug'] ?? ''));
+        if ($slug === '') {
+            $slug = $this->extractPluginSlug((string)($item['canonical_url'] ?? ''));
+        }
+
+        if ($slug === '') {
+            return $item;
+        }
+
+        $pluginData = $this->wordPressPluginService->fetchBySlug($slug);
+        if ($pluginData === null) {
+            return $item;
+        }
+
+        if (($item['name'] ?? '') === '') {
+            $item['name'] = $pluginData['name'];
+        }
+
+        if (($item['description'] ?? '') === '') {
+            $item['description'] = $pluginData['description'];
+        }
+
+        if (($item['plugin_icon_url'] ?? '') === '') {
+            $item['plugin_icon_url'] = $pluginData['icon_url'];
+        }
+
+        $item['plugin_author'] = $pluginData['author'];
+        $item['plugin_active_installs'] = $pluginData['active_installs'];
+        $item['plugin_tested'] = $pluginData['tested'];
+
+        return $item;
+    }
+
+    private function extractPluginSlug(string $canonicalUrl): string
+    {
+        if (preg_match('#/plugins/([a-z0-9-]+)/?#i', $canonicalUrl, $matches) !== 1) {
+            return '';
+        }
+
+        return strtolower((string)$matches[1]);
     }
 
     /** @return array{message: string, type: string} */

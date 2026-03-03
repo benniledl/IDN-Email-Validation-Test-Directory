@@ -20,7 +20,7 @@ $wordPressPluginService = new WordPressPluginService();
 
 $homeController = new HomeController($submissionRepository);
 $submissionController = new SubmissionController($templateRepository, $submissionRepository, $severityCalculator, $wordPressPluginService);
-$directoryController = new DirectoryController($submissionRepository);
+$directoryController = new DirectoryController($submissionRepository, $wordPressPluginService);
 
 $method = $_SERVER['REQUEST_METHOD'];
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';

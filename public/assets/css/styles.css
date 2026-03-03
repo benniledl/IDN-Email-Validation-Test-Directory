@@ -24,3 +24,62 @@ code { font-size: 0.9rem; }
     box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
     background: #f0f6ff;
 }
+
+.software-directory-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.directory-plugin-card {
+    border: 1px solid #e9ecef;
+    border-radius: 0.9rem;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: 84px 1fr;
+    gap: 1rem;
+    background: #fff;
+}
+
+.directory-plugin-icon-wrap {
+    width: 84px;
+    height: 84px;
+}
+
+.directory-plugin-icon {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #dee2e6;
+}
+
+.directory-plugin-fallback-icon {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: #e9ecef;
+    color: #495057;
+    display: grid;
+    place-content: center;
+    font-weight: 700;
+    font-size: 1.4rem;
+    border: 1px solid #dee2e6;
+}
+
+.directory-plugin-title a {
+    text-decoration: none;
+}
+
+.directory-plugin-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+    color: #6c757d;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+    .directory-plugin-card {
+        grid-template-columns: 1fr;
+    }
+}
