@@ -1,23 +1,21 @@
-<section class="card border-0 shadow-sm mb-4" aria-labelledby="page-title">
-    <div class="card-body p-4 p-md-5">
-        <h1 id="page-title" class="h3 mb-3">IDN Email Validation Test Directory</h1>
-        <p class="text-secondary mb-4">Browse software report histories, drill down to individual reports, and submit new IDN validation results.</p>
-        <div class="d-flex flex-wrap gap-2">
-            <a href="/submit-report" class="btn btn-primary">Submit a report</a>
-            <a href="/software" class="btn btn-outline-secondary">Plugin/software overview</a>
-        </div>
+<section class="app-card app-hero" aria-labelledby="page-title">
+    <h1 id="page-title" class="app-title">IDN Email Validation Test Directory</h1>
+    <p class="text-muted-modern mb-4">Track software report histories, inspect detailed test outcomes, and submit new IDN validation results in one place.</p>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="/submit-report" class="btn btn-primary">Submit a report</a>
+        <a href="/software" class="btn btn-outline-secondary">Software overview</a>
     </div>
 </section>
 
 <?php if (!empty($flash)): ?>
-    <div class="alert alert-info" role="status"><?= htmlspecialchars((string)$flash, ENT_QUOTES, 'UTF-8') ?></div>
+    <div class="alert" role="status"><?= htmlspecialchars((string)$flash, ENT_QUOTES, 'UTF-8') ?></div>
 <?php endif; ?>
 
-<section class="card border-0 shadow-sm" aria-labelledby="history-title">
-    <div class="card-body p-4">
-        <h2 id="history-title" class="h5">Latest public reports</h2>
+<section class="app-card" aria-labelledby="history-title">
+    <div class="app-card-body">
+        <h2 id="history-title" class="h5 mb-3">Latest public reports</h2>
         <div class="table-responsive">
-            <table class="table table-striped mb-0">
+            <table class="table app-table mb-0 align-middle">
                 <thead>
                 <tr>
                     <th>Software</th>
