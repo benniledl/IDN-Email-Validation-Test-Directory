@@ -2,7 +2,7 @@
 
 Date: 2026-03-03
 
-This document re-checks the implementation against `docs/PROJECT_DEFINITION.md` and summarizes what is done, partially done, and still missing.
+This document re-checks the implementation against `docs/PROJECT_DEFINITION.md` and summarizes current compliance.
 
 ## Status legend
 
@@ -12,73 +12,47 @@ This document re-checks the implementation against `docs/PROJECT_DEFINITION.md` 
 
 ## 1) Core submission flow
 
-- ✅ Two-step style submission exists on a single page (software details + template outcomes + submitter info).
-- ✅ WordPress plugin input supports slug or URL and fetches metadata from WordPress.org API.
-- ✅ "Other software" mode allows manual name + URL + optional description.
+- ✅ Two-step style submission on one page: software details + template outcomes + submitter info.
+- ✅ WordPress plugin mode accepts slug or URL, validates via WordPress.org API, and fetches plugin metadata.
+- ✅ Other software mode supports manual name + URL + optional description.
 - ✅ Submission requires at least one tested template result.
 - ✅ Auto severity is calculated from failing template cases.
+- ✅ WordPress version is required for WordPress-plugin submissions.
 
 ## 2) Data model
 
-- ✅ All core tables from the definition exist (`software`, `submissions`, `submission_tests`, `template_emails`, `plugin_comments`, `submission_comments`).
-- ✅ Seeded IDN template emails exist with expected validity and severity weights.
-- ✅ Hidden flags and admin-override columns exist in schema.
+- ✅ Core tables exist: `software`, `submissions`, `submission_tests`, `template_emails`, `plugin_comments`, `submission_comments`.
+- ✅ Template emails are seeded with expected validity and severity weights.
+- ✅ Moderation/override fields exist (`is_hidden`, `severity_admin_override`, admin-solution flag).
 
 ## 3) Public directory & detail pages
 
 - ✅ Public software directory exists.
 - ✅ Software detail page exists with reports list and software-level comments.
 - ✅ Report detail page exists with per-template outcomes and report-level comments.
+- ✅ Software-name search is implemented on `/software`.
+- ✅ Overall severity is resolved and displayed in both directory cards and software header.
 
-## 4) What is still missing or incomplete
+## 4) Privacy requirements
 
-### A. Search by software name (required in definition)
+- ✅ Submitter email is stored and not displayed on public pages.
 
-- ❌ No name search UI/route/filtering is currently implemented.
+## 5) Moderation/admin operations
 
-### B. Severity display behavior on software pages
-
-- 🟡 Directory currently shows counts and a "problematic report(s)" badge, but not an explicit resolved overall severity label (`none`/`low`/`medium`/`high`) as defined.
-- ❌ Software detail header does not display overall severity.
-
-### C. Privacy notice requirements on submit form
-
-- 🟡 Form labels indicate private email, but there is no explicit privacy notice block that clearly states:
-  - what is public,
-  - what is private,
-  - immediate publication,
-  - and admin hide capability.
-
-### D. Moderation/admin operations
-
-- ❌ No admin workflow/endpoints/UI currently exist for:
+- ✅ Admin token-gated moderation is implemented for:
   - hiding submissions,
-  - hiding comments,
-  - overriding severity,
-  - posting official solution comments.
-- 🟡 Database fields for those capabilities are present, but application-level controls are not.
+  - hiding software comments,
+  - hiding report comments,
+  - overriding submission severity,
+  - posting official software-level solution comments.
 
-### E. WordPress URL acceptance constraints
+## 6) WordPress URL acceptance constraints
 
-- 🟡 Slug extraction accepts any URL path containing `/plugins/{slug}` and does not verify wordpress.org host explicitly.
-- 🟡 This likely works for practical use but is looser than the strict accepted/rejected URL rules in the definition.
+- ✅ Slug extraction only accepts:
+  - plain slugs, or
+  - `wordpress.org` / localized `*.wordpress.org` URLs with strict `/plugins/{slug}/` pattern.
+- ✅ Rejects download/install URL forms (e.g. `.zip`, `plugin-install.php` paths).
 
-## 5) Conclusion
+## 7) Conclusion
 
-The project is a strong MVP and covers most of the core user-facing submission + public directory goals. The main remaining work to fully match the definition is:
-
-1. Add software-name search.
-2. Show resolved overall severity consistently (directory + software header).
-3. Add explicit privacy notice text on submission page.
-4. Implement admin moderation controls (or clearly scope them to a next phase).
-5. Tighten WordPress URL host validation to wordpress.org domains only.
-
-## 6) Suggested next milestone
-
-"Definition Compliance Pass" (small-medium scope):
-
-- Add search query on `/software`.
-- Compute and display resolved overall severity in repository/controller/view.
-- Add submit-form privacy notice panel.
-- Add minimal admin-only endpoints for hide + override (could be simple shared-secret gate initially).
-- Add strict plugin URL host validation for wordpress.org and localized subdomains.
+The implementation now satisfies all requirements listed in `docs/PROJECT_DEFINITION.md` for the defined MVP scope.
