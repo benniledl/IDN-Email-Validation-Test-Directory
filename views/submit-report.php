@@ -53,17 +53,6 @@
                 <label for="submitter_email" class="form-label">Your email * <span class="privacy-tip" tabindex="0" title="Your email is only visible to admins and is never shown publicly.">ⓘ</span></label>
                 <input id="submitter_email" name="submitter_email" type="email" class="form-control" required>
             </div>
-            <div class="col-12">
-                <div class="privacy-notice" role="note" aria-label="Privacy notice">
-                    <h2 class="h6 mb-2">Privacy notice</h2>
-                    <ul class="mb-0">
-                        <li><strong>Public:</strong> your name, role, optional notes, and test outcomes.</li>
-                        <li><strong>Private:</strong> your email address (visible to admins only).</li>
-                        <li><strong>Publication:</strong> reports are published immediately after submit.</li>
-                        <li><strong>Moderation:</strong> admins can hide submissions or comments later.</li>
-                    </ul>
-                </div>
-            </div>
             <div class="col-12" id="software_description_group">
                 <label for="software_description" class="form-label">Software description</label>
                 <textarea id="software_description" name="software_description" class="form-control" rows="2"></textarea>
