@@ -16,9 +16,10 @@ final class SubmissionController
     {
         $software = [
             'name' => trim((string)($post['software_name'] ?? '')),
-            'software_url' => trim((string)($post['software_url'] ?? '')),
-            'software_type' => trim((string)($post['software_type'] ?? 'other')),
+            'canonical_url' => trim((string)($post['software_url'] ?? '')),
+            'type' => trim((string)($post['software_type'] ?? 'other')),
             'description' => trim((string)($post['software_description'] ?? '')),
+            'slug' => null,
         ];
 
         $payload = [
@@ -26,10 +27,15 @@ final class SubmissionController
             'submitter_email' => trim((string)($post['submitter_email'] ?? '')),
             'submitter_role' => trim((string)($post['submitter_role'] ?? '')),
             'submission_comment' => trim((string)($post['submission_comment'] ?? '')),
+            'wordpress_version' => trim((string)($post['wordpress_version'] ?? '')),
         ];
 
-        if ($software['name'] === '' || $software['software_url'] === '' || $payload['submitter_name'] === '' || $payload['submitter_email'] === '') {
+        if ($software['name'] === '' || $software['canonical_url'] === '' || $payload['submitter_name'] === '' || $payload['submitter_email'] === '') {
             return 'Please fill all required fields.';
+        }
+
+        if ($software['type'] === 'wp_plugin' && $payload['wordpress_version'] === '') {
+            return 'WordPress version is required for plugin submissions.';
         }
 
         $templates = $this->templateRepository->all();
@@ -48,7 +54,7 @@ final class SubmissionController
                 'email_address' => (string)$template['email_address'],
                 'expected_valid' => (int)$template['expected_valid'],
                 'actual_result' => $actualResult,
-                'severity_level' => (string)$template['severity_level'],
+                'severity_weight' => (int)$template['severity_weight'],
             ];
         }
 

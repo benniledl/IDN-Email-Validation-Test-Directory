@@ -11,10 +11,16 @@ final class SubmissionRepository
     /** @param array<string, mixed> $software */
     public function findOrCreateSoftware(array $software): int
     {
-        $stmt = $this->pdo->prepare('SELECT id FROM software WHERE name = :name AND software_url = :software_url LIMIT 1');
+        $stmt = $this->pdo->prepare(
+            'SELECT id FROM software
+             WHERE type = :type
+             AND ((:slug IS NOT NULL AND slug = :slug) OR (:slug IS NULL AND canonical_url = :canonical_url))
+             LIMIT 1'
+        );
         $stmt->execute([
-            ':name' => $software['name'],
-            ':software_url' => $software['software_url'],
+            ':type' => $software['type'],
+            ':slug' => $software['slug'],
+            ':canonical_url' => $software['canonical_url'],
         ]);
 
         $existing = $stmt->fetch();
@@ -23,15 +29,16 @@ final class SubmissionRepository
         }
 
         $insert = $this->pdo->prepare(
-            'INSERT INTO software (name, software_url, software_type, description, created_at, updated_at)
-             VALUES (:name, :software_url, :software_type, :description, :created_at, :updated_at)'
+            'INSERT INTO software (type, slug, canonical_url, name, description, created_at, updated_at)
+             VALUES (:type, :slug, :canonical_url, :name, :description, :created_at, :updated_at)'
         );
 
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
         $insert->execute([
+            ':type' => $software['type'],
+            ':slug' => $software['slug'],
+            ':canonical_url' => $software['canonical_url'],
             ':name' => $software['name'],
-            ':software_url' => $software['software_url'],
-            ':software_type' => $software['software_type'],
             ':description' => $software['description'],
             ':created_at' => $now,
             ':updated_at' => $now,
@@ -52,12 +59,13 @@ final class SubmissionRepository
 
             $submissionStmt = $this->pdo->prepare(
                 'INSERT INTO submissions
-                 (software_id, submitter_name, submitter_email, submitter_role, submission_comment, severity_auto, is_hidden, created_at)
-                 VALUES (:software_id, :submitter_name, :submitter_email, :submitter_role, :submission_comment, :severity_auto, 0, :created_at)'
+                 (software_id, wordpress_version, submitter_name, submitter_email, submitter_role, submission_comment, severity_auto, is_hidden, created_at)
+                 VALUES (:software_id, :wordpress_version, :submitter_name, :submitter_email, :submitter_role, :submission_comment, :severity_auto, 0, :created_at)'
             );
 
             $submissionStmt->execute([
                 ':software_id' => $softwareId,
+                ':wordpress_version' => $payload['wordpress_version'] ?: null,
                 ':submitter_name' => $payload['submitter_name'],
                 ':submitter_email' => $payload['submitter_email'],
                 ':submitter_role' => $payload['submitter_role'] ?: null,
@@ -70,8 +78,8 @@ final class SubmissionRepository
 
             $testStmt = $this->pdo->prepare(
                 'INSERT INTO submission_tests
-                 (submission_id, template_email_id, email_address, expected_valid, actual_result, failure_detected, severity_level, created_at)
-                 VALUES (:submission_id, :template_email_id, :email_address, :expected_valid, :actual_result, :failure_detected, :severity_level, :created_at)'
+                 (submission_id, template_email_id, email_address, expected_valid, actual_result, failure_detected, severity_weight, created_at)
+                 VALUES (:submission_id, :template_email_id, :email_address, :expected_valid, :actual_result, :failure_detected, :severity_weight, :created_at)'
             );
 
             foreach ($tests as $test) {
@@ -86,7 +94,7 @@ final class SubmissionRepository
                     ':expected_valid' => $test['expected_valid'],
                     ':actual_result' => $test['actual_result'],
                     ':failure_detected' => $failure ? 1 : 0,
-                    ':severity_level' => $test['severity_level'],
+                    ':severity_weight' => $test['severity_weight'],
                     ':created_at' => $createdAt,
                 ]);
             }
