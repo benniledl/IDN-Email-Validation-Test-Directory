@@ -6,6 +6,7 @@ Starter implementation for a maintainable **PHP + JavaScript + CSS** project wit
 
 The full project definition was moved to:
 - `docs/PROJECT_DEFINITION.md`
+- Current implementation gap review: `docs/PROJECT_REEVALUATION.md`
 
 This keeps the README focused on setup while preserving the full specification.
 
