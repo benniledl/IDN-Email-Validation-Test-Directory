@@ -168,11 +168,14 @@ final class WordPressPluginService
         $oneX = array_merge($oneX, [
             sprintf('https://ps.w.org/%s/assets/icon.svg', $slugEncoded),
             sprintf('https://ps.w.org/%s/assets/icon-128x128.png', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-128x128.gif', $slugEncoded),
             sprintf('https://ps.w.org/%s/assets/icon-256x256.png', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-256x256.gif', $slugEncoded),
         ]);
 
         $twoX = array_merge($twoX, [
             sprintf('https://ps.w.org/%s/assets/icon-256x256.png', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-256x256.gif', $slugEncoded),
         ]);
 
         return $this->resolveAssetVariant($slug, 'icon', $oneX, $twoX, '1x', '2x');
@@ -252,7 +255,7 @@ final class WordPressPluginService
     private function cacheAssetLocally(string $slug, string $assetPrefix, string $assetUrl, string $variant): ?string
     {
         $extension = pathinfo((string)parse_url($assetUrl, PHP_URL_PATH), PATHINFO_EXTENSION);
-        $safeExtension = in_array(strtolower($extension), ['svg', 'png', 'jpg', 'jpeg', 'webp'], true)
+        $safeExtension = in_array(strtolower($extension), ['svg', 'png', 'jpg', 'jpeg', 'webp', 'gif'], true)
             ? strtolower($extension)
             : 'png';
 
