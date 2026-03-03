@@ -112,6 +112,7 @@ final class DirectoryController
             $item['plugin_icon_url'] = $pluginData['icon_url'];
         }
 
+        $item['plugin_icon_2x_url'] = $pluginData['icon_2x_url'];
         $item['plugin_author'] = $pluginData['author'];
         $item['plugin_active_installs'] = $pluginData['active_installs'];
         $item['plugin_tested'] = $pluginData['tested'];

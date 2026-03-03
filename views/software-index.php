@@ -23,6 +23,9 @@
                             <img
                                 class="directory-plugin-icon"
                                 src="<?= htmlspecialchars((string)$item['plugin_icon_url'], ENT_QUOTES, 'UTF-8') ?>"
+                                <?php if (!empty($item['plugin_icon_2x_url'])): ?>
+                                    srcset="<?= htmlspecialchars((string)$item['plugin_icon_url'], ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars((string)$item['plugin_icon_2x_url'], ENT_QUOTES, 'UTF-8') ?> 2x"
+                                <?php endif; ?>
                                 alt="<?= htmlspecialchars($decodedName, ENT_QUOTES, 'UTF-8') ?> icon"
                                 loading="lazy"
                             >
