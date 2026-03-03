@@ -245,6 +245,53 @@ body {
     font-size: 0.92rem;
 }
 
+
+.privacy-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid #9ca3af;
+    border-radius: 999px;
+    color: #4b5563;
+    font-size: 0.72rem;
+    cursor: help;
+}
+
+.report-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.85rem;
+}
+
+.report-summary-item {
+    border: 1px solid #e5e7eb;
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 0.75rem;
+}
+
+.report-summary-item-wide {
+    grid-column: 1 / -1;
+}
+
+.report-summary-label {
+    display: block;
+    color: #6b7280;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.2rem;
+}
+
+.report-summary-value {
+    color: #111827;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+
 .discussion-block {
     border: 1px solid #d1d5db;
     border-radius: 8px;
