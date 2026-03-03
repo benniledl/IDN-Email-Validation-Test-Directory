@@ -49,8 +49,8 @@ final class SubmissionRepository
         }
 
         $insert = $this->pdo->prepare(
-            'INSERT INTO software (type, slug, canonical_url, name, description, plugin_icon_url, plugin_banner_url, created_at, updated_at)
-             VALUES (:type, :slug, :canonical_url, :name, :description, :plugin_icon_url, :plugin_banner_url, :created_at, :updated_at)'
+            'INSERT INTO software (type, slug, canonical_url, name, description, plugin_icon_url, plugin_banner_url, is_hidden, created_at, updated_at)
+             VALUES (:type, :slug, :canonical_url, :name, :description, :plugin_icon_url, :plugin_banner_url, 0, :created_at, :updated_at)'
         );
 
         $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
@@ -137,7 +137,7 @@ final class SubmissionRepository
             'SELECT s.id, s.severity_auto, s.submitter_name, s.created_at, sw.id AS software_id, sw.name AS software_name
              FROM submissions s
              JOIN software sw ON sw.id = s.software_id
-             WHERE s.is_hidden = 0
+             WHERE s.is_hidden = 0 AND sw.is_hidden = 0
              ORDER BY s.id DESC
              LIMIT :limit'
         );
@@ -163,11 +163,12 @@ final class SubmissionRepository
                            ELSE 'none'
                        END AS overall_severity
                 FROM software sw
-                LEFT JOIN submissions s ON s.software_id = sw.id AND s.is_hidden = 0";
+                LEFT JOIN submissions s ON s.software_id = sw.id AND s.is_hidden = 0
+                WHERE sw.is_hidden = 0";
 
         $params = [];
         if ($search !== '') {
-            $sql .= ' WHERE LOWER(sw.name) LIKE LOWER(:search)';
+            $sql .= ' AND LOWER(sw.name) LIKE LOWER(:search)';
             $params[':search'] = '%' . $search . '%';
         }
 
@@ -192,7 +193,7 @@ final class SubmissionRepository
                     END AS overall_severity
              FROM software sw
              LEFT JOIN submissions s ON s.software_id = sw.id AND s.is_hidden = 0
-             WHERE sw.id = :id
+             WHERE sw.id = :id AND sw.is_hidden = 0
              GROUP BY sw.id
              LIMIT 1"
         );
@@ -257,7 +258,7 @@ final class SubmissionRepository
                     s.created_at, sw.name AS software_name, sw.canonical_url AS software_url
              FROM submissions s
              JOIN software sw ON sw.id = s.software_id
-             WHERE s.id = :id AND s.is_hidden = 0
+             WHERE s.id = :id AND s.is_hidden = 0 AND sw.is_hidden = 0
              LIMIT 1'
         );
         $stmt->execute([':id' => $submissionId]);
@@ -316,6 +317,14 @@ final class SubmissionRepository
         return $stmt->rowCount() > 0;
     }
 
+    public function hideCustomSoftware(int $softwareId): bool
+    {
+        $stmt = $this->pdo->prepare("UPDATE software SET is_hidden = 1 WHERE id = :id AND type = 'other'");
+        $stmt->execute([':id' => $softwareId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
     public function setSubmissionSeverityOverride(int $submissionId, ?string $severity): bool
     {
         $stmt = $this->pdo->prepare('UPDATE submissions SET severity_admin_override = :severity WHERE id = :id');
@@ -357,5 +366,40 @@ final class SubmissionRepository
             ':comment' => $comment,
             ':created_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
         ]);
+    }
+
+    public function adminTokenExists(string $token): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT id FROM admin_users WHERE admin_token = :token AND is_active = 1 LIMIT 1');
+        $stmt->execute([':token' => $token]);
+
+        return $stmt->fetch() !== false;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function activeAdmins(): array
+    {
+        $stmt = $this->pdo->query('SELECT id, name, email, created_at FROM admin_users WHERE is_active = 1 ORDER BY id ASC');
+
+        return $stmt->fetchAll();
+    }
+
+    public function addAdminUser(string $name, string $email, string $token): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO admin_users (name, email, admin_token, is_active, created_at)
+             VALUES (:name, :email, :token, 1, :created_at)'
+        );
+
+        try {
+            return $stmt->execute([
+                ':name' => $name,
+                ':email' => strtolower($email),
+                ':token' => $token,
+                ':created_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+            ]);
+        } catch (PDOException) {
+            return false;
+        }
     }
 }

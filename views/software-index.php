@@ -13,6 +13,7 @@
             <div class="col-md-10">
                 <label for="q" class="form-label">Search by software name</label>
                 <input id="q" class="form-control" name="q" value="<?= htmlspecialchars((string)($search ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. contact form">
+                <?php if (!empty($adminToken)): ?><input type="hidden" name="admin_token" value="<?= htmlspecialchars((string)$adminToken, ENT_QUOTES, 'UTF-8') ?>"><?php endif; ?>
             </div>
             <div class="col-md-2 d-grid align-self-end">
                 <button class="btn btn-outline-secondary" type="submit">Search</button>
@@ -45,7 +46,7 @@
 
                     <div class="directory-plugin-body">
                         <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
-                            <h2 class="h4 mb-0 directory-plugin-title"><a href="/software/<?= (int)$item['id'] ?>"><?= htmlspecialchars($decodedName, ENT_QUOTES, 'UTF-8') ?></a></h2>
+                            <h2 class="h4 mb-0 directory-plugin-title"><a href="/software/<?= (int)$item['id'] ?><?= !empty($adminToken) ? '?admin_token=' . urlencode((string)$adminToken) : '' ?>"><?= htmlspecialchars($decodedName, ENT_QUOTES, 'UTF-8') ?></a></h2>
                             <span class="badge text-bg-<?= $severityTone ?> text-uppercase">Risk: <?= htmlspecialchars($overallSeverity, ENT_QUOTES, 'UTF-8') ?></span>
                         </div>
 
@@ -60,6 +61,12 @@
                         </div>
 
                         <a href="<?= htmlspecialchars((string)$item['canonical_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary mt-3">Official page</a>
+                        <?php if (!empty($adminMode) && (string)($item['type'] ?? '') === 'other'): ?>
+                            <form method="post" action="/software/<?= (int)$item['id'] ?>/admin/hide<?= !empty($adminToken) ? '?admin_token=' . urlencode((string)$adminToken) : '' ?>" class="d-inline">
+                                <input type="hidden" name="admin_token" value="<?= htmlspecialchars((string)$adminToken, ENT_QUOTES, 'UTF-8') ?>">
+                                <button class="btn btn-sm btn-outline-danger mt-3" type="submit">Hide custom software</button>
+                            </form>
+                        <?php endif; ?>
                     </div>
                 </article>
             <?php endforeach; ?>
