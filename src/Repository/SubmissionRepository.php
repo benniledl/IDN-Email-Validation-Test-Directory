@@ -148,30 +148,53 @@ final class SubmissionRepository
     }
 
     /** @return array<int, array<string, mixed>> */
-    public function softwareDirectory(): array
+    public function softwareDirectory(string $search = ''): array
     {
-        return $this->pdo->query(
-            "SELECT sw.id, sw.name, sw.slug, sw.type, sw.canonical_url, sw.description, sw.plugin_icon_url,
-                    COUNT(s.id) AS report_count,
-                    MAX(s.created_at) AS last_report_at,
-                    SUM(CASE WHEN s.severity_auto = 'high' THEN 1 ELSE 0 END) AS high_count,
-                    SUM(CASE WHEN s.severity_auto = 'medium' THEN 1 ELSE 0 END) AS medium_count,
-                    SUM(CASE WHEN s.severity_auto = 'low' THEN 1 ELSE 0 END) AS low_count
-             FROM software sw
-             LEFT JOIN submissions s ON s.software_id = sw.id AND s.is_hidden = 0
-             GROUP BY sw.id
-             ORDER BY last_report_at DESC, sw.name ASC"
-        )->fetchAll();
+        $sql = "SELECT sw.id, sw.name, sw.slug, sw.type, sw.canonical_url, sw.description, sw.plugin_icon_url,
+                       COUNT(s.id) AS report_count,
+                       MAX(s.created_at) AS last_report_at,
+                       SUM(CASE WHEN COALESCE(s.severity_admin_override, s.severity_auto) = 'high' THEN 1 ELSE 0 END) AS high_count,
+                       SUM(CASE WHEN COALESCE(s.severity_admin_override, s.severity_auto) = 'medium' THEN 1 ELSE 0 END) AS medium_count,
+                       SUM(CASE WHEN COALESCE(s.severity_admin_override, s.severity_auto) = 'low' THEN 1 ELSE 0 END) AS low_count,
+                       CASE
+                           WHEN SUM(CASE WHEN COALESCE(s.severity_admin_override, s.severity_auto) = 'high' THEN 1 ELSE 0 END) > 0 THEN 'high'
+                           WHEN SUM(CASE WHEN COALESCE(s.severity_admin_override, s.severity_auto) = 'medium' THEN 1 ELSE 0 END) > 0 THEN 'medium'
+                           WHEN SUM(CASE WHEN COALESCE(s.severity_admin_override, s.severity_auto) = 'low' THEN 1 ELSE 0 END) > 0 THEN 'low'
+                           ELSE 'none'
+                       END AS overall_severity
+                FROM software sw
+                LEFT JOIN submissions s ON s.software_id = sw.id AND s.is_hidden = 0";
+
+        $params = [];
+        if ($search !== '') {
+            $sql .= ' WHERE LOWER(sw.name) LIKE LOWER(:search)';
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $sql .= ' GROUP BY sw.id ORDER BY last_report_at DESC, sw.name ASC';
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
     }
 
     /** @return array<string, mixed>|null */
     public function findSoftware(int $softwareId): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, name, type, canonical_url, description, plugin_icon_url, plugin_banner_url
-             FROM software
-             WHERE id = :id
-             LIMIT 1'
+            "SELECT sw.id, sw.name, sw.type, sw.slug, sw.canonical_url, sw.description, sw.plugin_icon_url, sw.plugin_banner_url,
+                    CASE
+                        WHEN SUM(CASE WHEN COALESCE(s.severity_admin_override, s.severity_auto) = 'high' THEN 1 ELSE 0 END) > 0 THEN 'high'
+                        WHEN SUM(CASE WHEN COALESCE(s.severity_admin_override, s.severity_auto) = 'medium' THEN 1 ELSE 0 END) > 0 THEN 'medium'
+                        WHEN SUM(CASE WHEN COALESCE(s.severity_admin_override, s.severity_auto) = 'low' THEN 1 ELSE 0 END) > 0 THEN 'low'
+                        ELSE 'none'
+                    END AS overall_severity
+             FROM software sw
+             LEFT JOIN submissions s ON s.software_id = sw.id AND s.is_hidden = 0
+             WHERE sw.id = :id
+             GROUP BY sw.id
+             LIMIT 1"
         );
         $stmt->execute([':id' => $softwareId]);
         $software = $stmt->fetch();
@@ -183,7 +206,10 @@ final class SubmissionRepository
     public function softwareSubmissions(int $softwareId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, wordpress_version, submitter_name, submitter_role, submission_comment, severity_auto, created_at
+            'SELECT id, wordpress_version, submitter_name, submitter_role, submission_comment,
+                    severity_auto, severity_admin_override,
+                    COALESCE(severity_admin_override, severity_auto) AS severity_resolved,
+                    created_at
              FROM submissions
              WHERE software_id = :software_id AND is_hidden = 0
              ORDER BY id DESC'
@@ -197,7 +223,7 @@ final class SubmissionRepository
     public function softwareComments(int $softwareId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT author_name, author_role, comment, is_admin_solution, created_at
+            'SELECT id, author_name, author_role, comment, is_admin_solution, created_at
              FROM plugin_comments
              WHERE software_id = :software_id AND is_hidden = 0
              ORDER BY id DESC'
@@ -226,7 +252,9 @@ final class SubmissionRepository
     {
         $stmt = $this->pdo->prepare(
             'SELECT s.id, s.software_id, s.wordpress_version, s.submitter_name, s.submitter_role, s.submission_comment,
-                    s.severity_auto, s.created_at, sw.name AS software_name, sw.canonical_url AS software_url
+                    s.severity_auto, s.severity_admin_override,
+                    COALESCE(s.severity_admin_override, s.severity_auto) AS severity_resolved,
+                    s.created_at, sw.name AS software_name, sw.canonical_url AS software_url
              FROM submissions s
              JOIN software sw ON sw.id = s.software_id
              WHERE s.id = :id AND s.is_hidden = 0
@@ -256,7 +284,7 @@ final class SubmissionRepository
     public function reportComments(int $submissionId): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT author_name, author_role, comment, created_at
+            'SELECT id, author_name, author_role, comment, created_at
              FROM submission_comments
              WHERE submission_id = :submission_id AND is_hidden = 0
              ORDER BY id DESC'
@@ -274,6 +302,57 @@ final class SubmissionRepository
         );
         $stmt->execute([
             ':submission_id' => $submissionId,
+            ':author_name' => $authorName,
+            ':comment' => $comment,
+            ':created_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+        ]);
+    }
+
+    public function hideSubmission(int $submissionId): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE submissions SET is_hidden = 1 WHERE id = :id');
+        $stmt->execute([':id' => $submissionId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function setSubmissionSeverityOverride(int $submissionId, ?string $severity): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE submissions SET severity_admin_override = :severity WHERE id = :id');
+        $stmt->bindValue(':id', $submissionId, PDO::PARAM_INT);
+        if ($severity === null) {
+            $stmt->bindValue(':severity', null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(':severity', $severity, PDO::PARAM_STR);
+        }
+
+        return $stmt->execute();
+    }
+
+    public function hideSoftwareComment(int $commentId): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE plugin_comments SET is_hidden = 1 WHERE id = :id');
+        $stmt->execute([':id' => $commentId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function hideReportComment(int $commentId): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE submission_comments SET is_hidden = 1 WHERE id = :id');
+        $stmt->execute([':id' => $commentId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    public function addAdminSoftwareSolutionComment(int $softwareId, string $authorName, string $comment): void
+    {
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO plugin_comments (software_id, author_name, author_role, comment, is_admin_solution, is_hidden, created_at)
+             VALUES (:software_id, :author_name, 'admin', :comment, 1, 0, :created_at)"
+        );
+        $stmt->execute([
+            ':software_id' => $softwareId,
             ':author_name' => $authorName,
             ':comment' => $comment,
             ':created_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),

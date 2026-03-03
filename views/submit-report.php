@@ -7,6 +7,12 @@
             <div class="alert alert-<?= htmlspecialchars((string)($flashType ?? 'info'), ENT_QUOTES, 'UTF-8') ?>" role="status"><?= htmlspecialchars((string)$flash, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
 
+
+        <div class="alert alert-info" role="note">
+            <strong>Privacy notice:</strong> Your name, role, comment, and test results are published immediately.
+            Your email address stays private (admin-only). Admins can hide submissions or comments later for moderation.
+        </div>
+
         <form method="post" action="/submissions" class="row g-3" novalidate>
             <div class="col-12">
                 <label class="form-label d-block">Software type</label>

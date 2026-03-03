@@ -162,11 +162,21 @@ final class SubmissionController
         }
 
         $parts = parse_url($value);
-        if (!is_array($parts) || !isset($parts['path'])) {
+        if (!is_array($parts) || !isset($parts['host'], $parts['path'])) {
             return null;
         }
 
-        if (preg_match('#/plugins/([a-z0-9-]+)/?#', $parts['path'], $matches) !== 1) {
+        $host = strtolower((string)$parts['host']);
+        if (!preg_match('/(^|\.)wordpress\.org$/', $host)) {
+            return null;
+        }
+
+        $path = (string)$parts['path'];
+        if (str_contains($path, '/plugin-install.php') || str_contains($path, '.zip')) {
+            return null;
+        }
+
+        if (preg_match('#^/plugins/([a-z0-9-]+)/?$#', $path, $matches) !== 1) {
             return null;
         }
 

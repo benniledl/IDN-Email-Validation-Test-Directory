@@ -7,14 +7,16 @@ final class DirectoryController
     public function __construct(
         private SubmissionRepository $submissionRepository,
         private WordPressPluginService $wordPressPluginService
-    )
-    {
+    ) {
     }
 
     public function softwareIndex(?string $flash = null, string $flashType = 'info'): void
     {
+        $search = trim((string)($_GET['q'] ?? ''));
+
         View::render('software-index', [
-            'softwareItems' => $this->enrichSoftwareDirectory($this->submissionRepository->softwareDirectory()),
+            'softwareItems' => $this->enrichSoftwareDirectory($this->submissionRepository->softwareDirectory($search)),
+            'search' => $search,
             'flash' => $flash,
             'flashType' => $flashType,
         ]);
@@ -29,10 +31,14 @@ final class DirectoryController
             return;
         }
 
+        $adminMode = $this->isAdminRequest();
+
         View::render('software-detail', [
             'software' => $this->enrichSoftwareDetail($software),
             'reports' => $this->submissionRepository->softwareSubmissions($softwareId),
             'comments' => $this->submissionRepository->softwareComments($softwareId),
+            'adminMode' => $adminMode,
+            'adminToken' => $adminMode ? trim((string)($_GET['admin_token'] ?? ($_POST['admin_token'] ?? ''))) : '',
             'flash' => $flash,
             'flashType' => $flashType,
         ]);
@@ -47,15 +53,18 @@ final class DirectoryController
             return;
         }
 
+        $adminMode = $this->isAdminRequest();
+
         View::render('report-detail', [
             'report' => $report,
             'tests' => $this->submissionRepository->reportTests($reportId),
             'comments' => $this->submissionRepository->reportComments($reportId),
+            'adminMode' => $adminMode,
+            'adminToken' => $adminMode ? trim((string)($_GET['admin_token'] ?? ($_POST['admin_token'] ?? ''))) : '',
             'flash' => $flash,
             'flashType' => $flashType,
         ]);
     }
-
 
     /** @param array<int, array<string, mixed>> $softwareItems
      *  @return array<int, array<string, mixed>>
@@ -162,5 +171,95 @@ final class DirectoryController
         $this->submissionRepository->addReportComment($reportId, $name, $comment);
 
         return ['message' => 'Comment added to report detail.', 'type' => 'success'];
+    }
+
+    /** @return array{message: string, type: string} */
+    public function adminHideSubmission(int $submissionId): array
+    {
+        if (!$this->isAdminRequest()) {
+            return ['message' => 'Admin token missing or invalid.', 'type' => 'danger'];
+        }
+
+        if (!$this->submissionRepository->hideSubmission($submissionId)) {
+            return ['message' => 'Submission not found or already hidden.', 'type' => 'danger'];
+        }
+
+        return ['message' => 'Submission hidden.', 'type' => 'success'];
+    }
+
+    /** @return array{message: string, type: string} */
+    public function adminOverrideSeverity(int $submissionId, array $post): array
+    {
+        if (!$this->isAdminRequest()) {
+            return ['message' => 'Admin token missing or invalid.', 'type' => 'danger'];
+        }
+
+        $severity = trim((string)($post['severity_admin_override'] ?? ''));
+        $normalized = $severity === '' ? null : $severity;
+        if ($normalized !== null && !in_array($normalized, ['none', 'low', 'medium', 'high'], true)) {
+            return ['message' => 'Invalid severity override value.', 'type' => 'danger'];
+        }
+
+        $this->submissionRepository->setSubmissionSeverityOverride($submissionId, $normalized);
+
+        return ['message' => 'Severity override saved.', 'type' => 'success'];
+    }
+
+    /** @return array{message: string, type: string} */
+    public function adminHideSoftwareComment(int $commentId): array
+    {
+        if (!$this->isAdminRequest()) {
+            return ['message' => 'Admin token missing or invalid.', 'type' => 'danger'];
+        }
+
+        if (!$this->submissionRepository->hideSoftwareComment($commentId)) {
+            return ['message' => 'Software comment not found.', 'type' => 'danger'];
+        }
+
+        return ['message' => 'Software comment hidden.', 'type' => 'success'];
+    }
+
+    /** @return array{message: string, type: string} */
+    public function adminHideReportComment(int $commentId): array
+    {
+        if (!$this->isAdminRequest()) {
+            return ['message' => 'Admin token missing or invalid.', 'type' => 'danger'];
+        }
+
+        if (!$this->submissionRepository->hideReportComment($commentId)) {
+            return ['message' => 'Report comment not found.', 'type' => 'danger'];
+        }
+
+        return ['message' => 'Report comment hidden.', 'type' => 'success'];
+    }
+
+    /** @return array{message: string, type: string} */
+    public function adminAddSoftwareSolution(int $softwareId, array $post): array
+    {
+        if (!$this->isAdminRequest()) {
+            return ['message' => 'Admin token missing or invalid.', 'type' => 'danger'];
+        }
+
+        $author = trim((string)($post['author_name'] ?? 'Admin'));
+        $comment = trim((string)($post['comment'] ?? ''));
+        if ($comment === '') {
+            return ['message' => 'Solution comment cannot be empty.', 'type' => 'danger'];
+        }
+
+        $this->submissionRepository->addAdminSoftwareSolutionComment($softwareId, $author === '' ? 'Admin' : $author, $comment);
+
+        return ['message' => 'Official solution comment posted.', 'type' => 'success'];
+    }
+
+    private function isAdminRequest(): bool
+    {
+        $configuredToken = trim((string)getenv('ADMIN_TOKEN'));
+        if ($configuredToken === '') {
+            return false;
+        }
+
+        $providedToken = trim((string)($_POST['admin_token'] ?? ($_GET['admin_token'] ?? '')));
+
+        return hash_equals($configuredToken, $providedToken);
     }
 }
