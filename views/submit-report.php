@@ -1,29 +1,23 @@
 <section class="app-card" aria-labelledby="submit-title">
     <div class="app-card-body">
         <h1 id="submit-title" class="h4 mb-3">Submit a report</h1>
-        <p class="text-secondary">Provide software details, fill your tested outcomes, and publish the report instantly.</p>
+        <p class="text-secondary">Provide software details, record your test outcomes, and publish your report instantly.</p>
 
         <?php if (!empty($flash)): ?>
             <div class="alert alert-<?= htmlspecialchars((string)($flashType ?? 'info'), ENT_QUOTES, 'UTF-8') ?>" role="status"><?= htmlspecialchars((string)$flash, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
 
-
-        <div class="alert" role="note">
-            <strong>Privacy notice:</strong> Your name, role, comment, and test results are published immediately.
-            Your email address stays private (admin-only). Admins can hide submissions or comments later for moderation.
-        </div>
-
         <form method="post" action="/submissions" class="row g-3" novalidate>
             <div class="col-12">
                 <label class="form-label d-block">Software type</label>
                 <div class="software-type-toggle" role="radiogroup" aria-label="Software type">
-                    <input type="radio" class="btn-check" name="software_type" id="software_type_wp" value="wp_plugin">
+                    <input type="radio" class="btn-check" name="software_type" id="software_type_wp" value="wp_plugin" checked>
                     <label class="software-type-option" for="software_type_wp">
                         <span class="fw-semibold">WordPress plugin</span>
                         <small class="text-secondary d-block">Fetches title, description, and image from WordPress.org.</small>
                     </label>
 
-                    <input type="radio" class="btn-check" name="software_type" id="software_type_other" value="other" checked>
+                    <input type="radio" class="btn-check" name="software_type" id="software_type_other" value="other">
                     <label class="software-type-option" for="software_type_other">
                         <span class="fw-semibold">Other software</span>
                         <small class="text-secondary d-block">Manually provide software details.</small>
@@ -56,7 +50,7 @@
                 <input id="submitter_name" name="submitter_name" class="form-control" required>
             </div>
             <div class="col-md-6">
-                <label for="submitter_email" class="form-label">Your email (private) *</label>
+                <label for="submitter_email" class="form-label">Your email * <span class="privacy-tip" tabindex="0" title="Your email is only visible to admins and is never shown publicly.">ⓘ</span></label>
                 <input id="submitter_email" name="submitter_email" type="email" class="form-control" required>
             </div>
             <div class="col-12" id="software_description_group">
@@ -64,8 +58,8 @@
                 <textarea id="software_description" name="software_description" class="form-control" rows="2"></textarea>
             </div>
             <div class="col-12">
-                <label for="submission_comment" class="form-label">Submission comment</label>
-                <textarea id="submission_comment" name="submission_comment" class="form-control" rows="2"></textarea>
+                <label for="submission_comment" class="form-label">Notes</label>
+                <textarea id="submission_comment" name="submission_comment" class="form-control" rows="2" placeholder="Optional notes about what you observed"></textarea>
             </div>
 
             <div class="col-12">
@@ -78,21 +72,30 @@
                             <th>Expected</th>
                             <th>Severity bucket</th>
                             <th>Your result</th>
+                            <th>Outcome</th>
                         </tr>
                         </thead>
                         <tbody>
                         <?php foreach ($templates as $template): ?>
                             <?php $severityLabel = match ((int)$template['severity_weight']) {3 => 'high',2 => 'medium',default => 'low'}; ?>
+                            <?php $expectedLabel = (int)$template['expected_valid'] === 1 ? 'Valid' : 'Invalid'; ?>
                             <tr>
                                 <td><code><?= htmlspecialchars((string)$template['email_address'], ENT_QUOTES, 'UTF-8') ?></code></td>
-                                <td><?= (int)$template['expected_valid'] === 1 ? 'Valid' : 'Invalid' ?></td>
+                                <td><?= $expectedLabel ?></td>
                                 <td><span class="badge text-bg-secondary text-uppercase"><?= htmlspecialchars($severityLabel, ENT_QUOTES, 'UTF-8') ?></span></td>
                                 <td>
-                                    <select name="result_<?= (int)$template['id'] ?>" class="form-select form-select-sm result-select">
+                                    <select
+                                        name="result_<?= (int)$template['id'] ?>"
+                                        class="form-select form-select-sm result-select"
+                                        data-expected="<?= (int)$template['expected_valid'] ?>"
+                                        aria-label="Result for <?= htmlspecialchars((string)$template['email_address'], ENT_QUOTES, 'UTF-8') ?>">
                                         <option value="not_tested" selected>Not tested</option>
-                                        <option value="accepted">Accepted</option>
-                                        <option value="rejected">Rejected</option>
+                                        <option value="accepted">Accepted by software</option>
+                                        <option value="rejected">Rejected by software</option>
                                     </select>
+                                </td>
+                                <td>
+                                    <span class="result-outcome badge text-bg-secondary">Not tested</span>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

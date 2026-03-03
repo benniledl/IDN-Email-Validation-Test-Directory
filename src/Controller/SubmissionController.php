@@ -21,7 +21,7 @@ final class SubmissionController
         ]);
     }
 
-    /** @return array{message: string, type: string} */
+    /** @return array{message: string, type: string, submission_id?: int} */
     public function store(array $post): array
     {
         $softwareType = trim((string)($post['software_type'] ?? 'other'));
@@ -85,6 +85,7 @@ final class SubmissionController
         return [
             'message' => sprintf('Submission #%d saved. Auto severity: %s.', $submissionId, strtoupper($severity)),
             'type' => 'success',
+            'submission_id' => $submissionId,
         ];
     }
 

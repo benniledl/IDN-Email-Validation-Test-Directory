@@ -5,7 +5,7 @@ $(function () {
     const $softwareDescription = $('#software_description');
 
     function selectedSoftwareType() {
-        return $('input[name="software_type"]:checked').val() || 'other';
+        return $('input[name="software_type"]:checked').val() || 'wp_plugin';
     }
 
     function syncSoftwareFieldVisibility() {
@@ -20,6 +20,28 @@ $(function () {
             $softwareName.val('');
             $softwareDescription.val('');
         }
+    }
+
+    function updateTemplateOutcome() {
+        $('.result-select').each(function () {
+            const $select = $(this);
+            const expectedValid = $select.data('expected') === 1 || $select.data('expected') === '1';
+            const value = $select.val();
+            const $outcome = $select.closest('tr').find('.result-outcome');
+
+            if (value === 'not_tested') {
+                $outcome.removeClass('text-bg-success text-bg-danger').addClass('text-bg-secondary').text('Not tested');
+                return;
+            }
+
+            const isPass = (expectedValid && value === 'accepted') || (!expectedValid && value === 'rejected');
+
+            if (isPass) {
+                $outcome.removeClass('text-bg-secondary text-bg-danger').addClass('text-bg-success').text('Pass');
+            } else {
+                $outcome.removeClass('text-bg-secondary text-bg-success').addClass('text-bg-danger').text('Failure');
+            }
+        });
     }
 
     function validateFormReady() {
@@ -46,7 +68,14 @@ $(function () {
         validateFormReady();
     });
 
+    $form.on('change', '.result-select', () => {
+        updateTemplateOutcome();
+        validateFormReady();
+    });
+
     $form.on('input change', 'input, select, textarea', validateFormReady);
+
     syncSoftwareFieldVisibility();
+    updateTemplateOutcome();
     validateFormReady();
 });
