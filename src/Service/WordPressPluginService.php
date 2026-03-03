@@ -7,7 +7,7 @@ final class WordPressPluginService
     private const USER_AGENT = 'IDN-Validation-Directory/1.0';
     private const CACHE_TTL_SECONDS = 604800; // 7 days
 
-    /** @return array{name: string, description: string, icon_url: ?string, icon_2x_url: ?string, banner_url: ?string, author: string, active_installs: string, tested: string}|null */
+    /** @return array{name: string, description: string, icon_url: ?string, icon_2x_url: ?string, banner_url: ?string, banner_2x_url: ?string, author: string, active_installs: string, tested: string}|null */
     public function fetchBySlug(string $slug): ?array
     {
         $endpoint = sprintf('https://api.wordpress.org/plugins/info/1.0/%s.json', rawurlencode($slug));
@@ -23,7 +23,7 @@ final class WordPressPluginService
 
         $description = trim(strip_tags((string)($decoded['short_description'] ?? '')));
         $icon = $this->resolvePluginIcon($slug, $decoded['icons'] ?? null);
-        $bannerUrl = $this->pickImageUrl($decoded['banners'] ?? null);
+        $banner = $this->resolvePluginBanner($slug, $decoded['banners'] ?? null);
         $author = trim(strip_tags((string)($decoded['author'] ?? '')));
         $activeInstalls = $this->formatActiveInstalls($decoded['active_installs'] ?? null);
         $tested = trim((string)($decoded['tested'] ?? ''));
@@ -31,9 +31,10 @@ final class WordPressPluginService
         return [
             'name' => trim((string)$decoded['name']),
             'description' => $description,
-            'icon_url' => $icon['icon_url'],
-            'icon_2x_url' => $icon['icon_2x_url'],
-            'banner_url' => $bannerUrl,
+            'icon_url' => $icon['url'],
+            'icon_2x_url' => $icon['url_2x'],
+            'banner_url' => $banner['url'],
+            'banner_2x_url' => $banner['url_2x'],
             'author' => $author,
             'active_installs' => $activeInstalls,
             'tested' => $tested,
@@ -63,50 +64,94 @@ final class WordPressPluginService
     }
 
     /** @param mixed $icons
-     *  @return array{icon_url: ?string, icon_2x_url: ?string}
+     *  @return array{url: ?string, url_2x: ?string}
      */
     private function resolvePluginIcon(string $slug, mixed $icons): array
     {
-        $icon1xCandidates = [];
-        $icon2xCandidates = [];
+        $oneX = [];
+        $twoX = [];
 
         if (is_array($icons)) {
             if (!empty($icons['svg']) && is_string($icons['svg'])) {
-                $icon1xCandidates[] = $icons['svg'];
+                $oneX[] = $icons['svg'];
             }
             if (!empty($icons['1x']) && is_string($icons['1x'])) {
-                $icon1xCandidates[] = $icons['1x'];
+                $oneX[] = $icons['1x'];
             }
             if (!empty($icons['default']) && is_string($icons['default'])) {
-                $icon1xCandidates[] = $icons['default'];
+                $oneX[] = $icons['default'];
             }
             if (!empty($icons['2x']) && is_string($icons['2x'])) {
-                $icon2xCandidates[] = $icons['2x'];
-                if ($icon1xCandidates === []) {
-                    $icon1xCandidates[] = $icons['2x'];
+                $twoX[] = $icons['2x'];
+                if ($oneX === []) {
+                    $oneX[] = $icons['2x'];
                 }
             }
         }
 
-        $icon1xCandidates = array_merge($icon1xCandidates, [
-            sprintf('https://ps.w.org/%s/assets/icon.svg', rawurlencode($slug)),
-            sprintf('https://ps.w.org/%s/assets/icon-128x128.png', rawurlencode($slug)),
-            sprintf('https://ps.w.org/%s/assets/icon-256x256.png', rawurlencode($slug)),
+        $slugEncoded = rawurlencode($slug);
+        $oneX = array_merge($oneX, [
+            sprintf('https://ps.w.org/%s/assets/icon.svg', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-128x128.png', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/icon-256x256.png', $slugEncoded),
         ]);
 
-        $icon2xCandidates = array_merge($icon2xCandidates, [
-            sprintf('https://ps.w.org/%s/assets/icon-256x256.png', rawurlencode($slug)),
+        $twoX = array_merge($twoX, [
+            sprintf('https://ps.w.org/%s/assets/icon-256x256.png', $slugEncoded),
         ]);
 
-        $icon1x = $this->firstReachableUrl($icon1xCandidates);
-        $icon2x = $this->firstReachableUrl($icon2xCandidates);
+        return $this->resolveAssetVariant($slug, 'icon', $oneX, $twoX, '1x', '2x');
+    }
 
-        $local1x = $icon1x !== null ? $this->cacheIconLocally($slug, $icon1x, '1x') : null;
-        $local2x = $icon2x !== null ? $this->cacheIconLocally($slug, $icon2x, '2x') : null;
+    /** @param mixed $banners
+     *  @return array{url: ?string, url_2x: ?string}
+     */
+    private function resolvePluginBanner(string $slug, mixed $banners): array
+    {
+        $oneX = [];
+        $twoX = [];
+
+        if (is_array($banners)) {
+            if (!empty($banners['low']) && is_string($banners['low'])) {
+                $oneX[] = $banners['low'];
+            }
+            if (!empty($banners['high']) && is_string($banners['high'])) {
+                $twoX[] = $banners['high'];
+                if ($oneX === []) {
+                    $oneX[] = $banners['high'];
+                }
+            }
+        }
+
+        $slugEncoded = rawurlencode($slug);
+        $oneX = array_merge($oneX, [
+            sprintf('https://ps.w.org/%s/assets/banner-772x250.png', $slugEncoded),
+            sprintf('https://ps.w.org/%s/assets/banner-1544x500.png', $slugEncoded),
+        ]);
+
+        $twoX = array_merge($twoX, [
+            sprintf('https://ps.w.org/%s/assets/banner-1544x500.png', $slugEncoded),
+        ]);
+
+        return $this->resolveAssetVariant($slug, 'banner', $oneX, $twoX, '772w', '1544w');
+    }
+
+    /**
+     * @param array<int, string> $oneXCandidates
+     * @param array<int, string> $twoXCandidates
+     * @return array{url: ?string, url_2x: ?string}
+     */
+    private function resolveAssetVariant(string $slug, string $assetPrefix, array $oneXCandidates, array $twoXCandidates, string $variant1x, string $variant2x): array
+    {
+        $oneX = $this->firstReachableUrl($oneXCandidates);
+        $twoX = $this->firstReachableUrl($twoXCandidates);
+
+        $local1x = $oneX !== null ? $this->cacheAssetLocally($slug, $assetPrefix, $oneX, $variant1x) : null;
+        $local2x = $twoX !== null ? $this->cacheAssetLocally($slug, $assetPrefix, $twoX, $variant2x) : null;
 
         return [
-            'icon_url' => $local1x ?? $icon1x,
-            'icon_2x_url' => $local2x ?? $icon2x,
+            'url' => $local1x ?? $oneX,
+            'url_2x' => $local2x ?? $twoX,
         ];
     }
 
@@ -129,36 +174,36 @@ final class WordPressPluginService
         return null;
     }
 
-    private function cacheIconLocally(string $slug, string $iconUrl, string $variant): ?string
+    private function cacheAssetLocally(string $slug, string $assetPrefix, string $assetUrl, string $variant): ?string
     {
-        $extension = pathinfo((string)parse_url($iconUrl, PHP_URL_PATH), PATHINFO_EXTENSION);
+        $extension = pathinfo((string)parse_url($assetUrl, PHP_URL_PATH), PATHINFO_EXTENSION);
         $safeExtension = in_array(strtolower($extension), ['svg', 'png', 'jpg', 'jpeg', 'webp'], true)
             ? strtolower($extension)
             : 'png';
 
-        $cacheDir = dirname(__DIR__, 2) . '/public/assets/plugin-icons';
+        $cacheDir = dirname(__DIR__, 2) . '/public/assets/plugin-assets';
         if (!is_dir($cacheDir) && !mkdir($cacheDir, 0775, true) && !is_dir($cacheDir)) {
             return null;
         }
 
         $base = preg_replace('/[^a-z0-9-]/', '-', strtolower($slug));
-        $filename = sprintf('%s-%s.%s', trim((string)$base, '-'), $variant, $safeExtension);
+        $filename = sprintf('%s-%s-%s.%s', trim((string)$base, '-'), $assetPrefix, $variant, $safeExtension);
         $absolutePath = $cacheDir . '/' . $filename;
 
         if (is_file($absolutePath) && (time() - (int)filemtime($absolutePath)) < self::CACHE_TTL_SECONDS) {
-            return '/assets/plugin-icons/' . $filename;
+            return '/assets/plugin-assets/' . $filename;
         }
 
-        $binary = $this->request($iconUrl);
+        $binary = $this->request($assetUrl);
         if ($binary === null || $binary === '') {
-            return is_file($absolutePath) ? '/assets/plugin-icons/' . $filename : null;
+            return is_file($absolutePath) ? '/assets/plugin-assets/' . $filename : null;
         }
 
         if (@file_put_contents($absolutePath, $binary) === false) {
             return null;
         }
 
-        return '/assets/plugin-icons/' . $filename;
+        return '/assets/plugin-assets/' . $filename;
     }
 
     private function remoteFileExists(string $url): bool
@@ -219,20 +264,5 @@ final class WordPressPluginService
         $result = @file_get_contents($url, false, $context);
 
         return is_string($result) ? $result : null;
-    }
-
-    private function pickImageUrl(mixed $candidate): ?string
-    {
-        if (!is_array($candidate)) {
-            return null;
-        }
-
-        foreach (['svg', '2x', '1x', 'default', 'high', 'low'] as $key) {
-            if (!empty($candidate[$key]) && is_string($candidate[$key])) {
-                return $candidate[$key];
-            }
-        }
-
-        return null;
     }
 }

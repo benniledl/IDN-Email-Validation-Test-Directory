@@ -83,3 +83,16 @@ code { font-size: 0.9rem; }
         grid-template-columns: 1fr;
     }
 }
+
+.plugin-banner-wrap {
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid #dee2e6;
+    background: #f8f9fa;
+}
+
+.plugin-banner-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}

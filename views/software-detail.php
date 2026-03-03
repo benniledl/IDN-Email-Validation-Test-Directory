@@ -15,6 +15,20 @@
             </div>
             <a href="/software" class="btn btn-sm btn-outline-secondary">Back to overview</a>
         </div>
+        <?php if (!empty($software['plugin_banner_url'])): ?>
+            <div class="plugin-banner-wrap mb-3">
+                <img
+                    class="plugin-banner-image"
+                    src="<?= htmlspecialchars((string)$software['plugin_banner_url'], ENT_QUOTES, 'UTF-8') ?>"
+                    <?php if (!empty($software['plugin_banner_2x_url'])): ?>
+                        srcset="<?= htmlspecialchars((string)$software['plugin_banner_url'], ENT_QUOTES, 'UTF-8') ?> 772w, <?= htmlspecialchars((string)$software['plugin_banner_2x_url'], ENT_QUOTES, 'UTF-8') ?> 1544w"
+                        sizes="(min-width: 900px) 1000px, 100vw"
+                    <?php endif; ?>
+                    alt=""
+                    loading="lazy"
+                >
+            </div>
+        <?php endif; ?>
         <a href="<?= htmlspecialchars((string)$software['canonical_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="d-inline-block mb-2">
             <?= htmlspecialchars((string)$software['canonical_url'], ENT_QUOTES, 'UTF-8') ?>
         </a>
