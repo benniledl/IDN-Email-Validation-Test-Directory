@@ -6,11 +6,22 @@ final class WordPressPluginService
 {
     private const USER_AGENT = 'IDN-Validation-Directory/1.0';
     private const CACHE_TTL_SECONDS = 604800; // 7 days
+    private const META_CACHE_DIR = '/storage/cache/wp-plugin-meta';
 
     /** @return array{name: string, description: string, icon_url: ?string, icon_2x_url: ?string, banner_url: ?string, banner_2x_url: ?string, author: string, active_installs: string, tested: string}|null */
     public function fetchBySlug(string $slug): ?array
     {
-        $endpoint = sprintf('https://api.wordpress.org/plugins/info/1.0/%s.json', rawurlencode($slug));
+        $normalizedSlug = trim(strtolower($slug));
+        if ($normalizedSlug === '') {
+            return null;
+        }
+
+        $cached = $this->readCachedPluginMeta($normalizedSlug);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $endpoint = sprintf('https://api.wordpress.org/plugins/info/1.0/%s.json', rawurlencode($normalizedSlug));
         $response = $this->request($endpoint);
         if ($response === null) {
             return null;
@@ -22,13 +33,13 @@ final class WordPressPluginService
         }
 
         $description = trim(strip_tags((string)($decoded['short_description'] ?? '')));
-        $icon = $this->resolvePluginIcon($slug, $decoded['icons'] ?? null);
-        $banner = $this->resolvePluginBanner($slug, $decoded['banners'] ?? null);
+        $icon = $this->resolvePluginIcon($normalizedSlug, $decoded['icons'] ?? null);
+        $banner = $this->resolvePluginBanner($normalizedSlug, $decoded['banners'] ?? null);
         $author = trim(strip_tags((string)($decoded['author'] ?? '')));
         $activeInstalls = $this->formatActiveInstalls($decoded['active_installs'] ?? null);
         $tested = trim((string)($decoded['tested'] ?? ''));
 
-        return [
+        $result = [
             'name' => trim((string)$decoded['name']),
             'description' => $description,
             'icon_url' => $icon['url'],
@@ -39,6 +50,70 @@ final class WordPressPluginService
             'active_installs' => $activeInstalls,
             'tested' => $tested,
         ];
+
+        $this->writeCachedPluginMeta($normalizedSlug, $result);
+
+        return $result;
+    }
+
+    /** @return array{name: string, description: string, icon_url: ?string, icon_2x_url: ?string, banner_url: ?string, banner_2x_url: ?string, author: string, active_installs: string, tested: string}|null */
+    private function readCachedPluginMeta(string $slug): ?array
+    {
+        $cacheFile = $this->metaCacheFile($slug);
+        if (!is_file($cacheFile)) {
+            return null;
+        }
+
+        $contents = @file_get_contents($cacheFile);
+        if (!is_string($contents) || $contents === '') {
+            return null;
+        }
+
+        $decoded = json_decode($contents, true);
+        if (!is_array($decoded) || !isset($decoded['cached_at'], $decoded['data']) || !is_array($decoded['data'])) {
+            return null;
+        }
+
+        if ((time() - (int)$decoded['cached_at']) >= self::CACHE_TTL_SECONDS) {
+            return null;
+        }
+
+        if (!isset($decoded['data']['name'])) {
+            return null;
+        }
+
+        /** @var array{name: string, description: string, icon_url: ?string, icon_2x_url: ?string, banner_url: ?string, banner_2x_url: ?string, author: string, active_installs: string, tested: string} $data */
+        $data = $decoded['data'];
+
+        return $data;
+    }
+
+    /** @param array{name: string, description: string, icon_url: ?string, icon_2x_url: ?string, banner_url: ?string, banner_2x_url: ?string, author: string, active_installs: string, tested: string} $data */
+    private function writeCachedPluginMeta(string $slug, array $data): void
+    {
+        $cacheDir = dirname(__DIR__, 2) . self::META_CACHE_DIR;
+        if (!is_dir($cacheDir) && !mkdir($cacheDir, 0775, true) && !is_dir($cacheDir)) {
+            return;
+        }
+
+        $payload = json_encode([
+            'cached_at' => time(),
+            'data' => $data,
+        ]);
+
+        if (!is_string($payload)) {
+            return;
+        }
+
+        @file_put_contents($this->metaCacheFile($slug), $payload);
+    }
+
+    private function metaCacheFile(string $slug): string
+    {
+        $cacheDir = dirname(__DIR__, 2) . self::META_CACHE_DIR;
+        $safeSlug = preg_replace('/[^a-z0-9-]/', '-', strtolower($slug));
+
+        return $cacheDir . '/' . trim((string)$safeSlug, '-') . '.json';
     }
 
     private function formatActiveInstalls(mixed $count): string
