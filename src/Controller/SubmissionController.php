@@ -12,12 +12,13 @@ final class SubmissionController
     ) {
     }
 
-    public function create(?string $flash = null, string $flashType = 'info'): void
+    public function create(?string $flash = null, string $flashType = 'info', array $old = []): void
     {
         View::render('submit-report', [
             'templates' => $this->templateRepository->all(),
             'flash' => $flash,
             'flashType' => $flashType,
+            'old' => $old,
         ]);
     }
 
@@ -48,6 +49,10 @@ final class SubmissionController
 
         if ($payload['submitter_name'] === '' || $payload['submitter_email'] === '') {
             return ['message' => 'Please fill all required fields.', 'type' => 'danger'];
+        }
+
+        if (!$this->isValidSubmitterEmail($payload['submitter_email'])) {
+            return ['message' => 'Please enter a valid email address.', 'type' => 'danger'];
         }
 
         if ($software['type'] === 'wp_plugin' && $payload['wordpress_version'] === '') {
@@ -122,9 +127,14 @@ final class SubmissionController
             return ['error' => 'Please fill all required fields.'];
         }
 
+        $normalizedExternalUrl = $this->normalizeExternalUrl($canonicalInput);
+        if ($normalizedExternalUrl === null) {
+            return ['error' => 'For external software, please enter a full URL starting with http:// or https://'];
+        }
+
         return [
             'name' => $softwareName,
-            'canonical_url' => $this->normalizeGenericUrl($canonicalInput),
+            'canonical_url' => $normalizedExternalUrl,
             'type' => 'other',
             'description' => $softwareDescription,
             'slug' => null,
@@ -133,15 +143,25 @@ final class SubmissionController
         ];
     }
 
-    private function normalizeGenericUrl(string $input): string
+    private function normalizeExternalUrl(string $input): ?string
     {
         $trimmed = trim($input);
         if ($trimmed === '') {
-            return '';
+            return null;
         }
 
         if (!preg_match('#^https?://#i', $trimmed)) {
-            return 'https://' . ltrim($trimmed, '/');
+            return null;
+        }
+
+        $parts = parse_url($trimmed);
+        if (!is_array($parts) || empty($parts['host'])) {
+            return null;
+        }
+
+        $scheme = strtolower((string)($parts['scheme'] ?? ''));
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            return null;
         }
 
         return $trimmed;
@@ -182,5 +202,38 @@ final class SubmissionController
         }
 
         return $matches[1];
+    }
+
+    private function isValidSubmitterEmail(string $email): bool
+    {
+        $email = trim($email);
+        if ($email === '') {
+            return false;
+        }
+
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
+            return true;
+        }
+
+        $parts = explode('@', $email);
+        if (count($parts) !== 2) {
+            return false;
+        }
+
+        [$local, $domain] = $parts;
+        if ($local === '' || $domain === '' || str_contains($domain, '..')) {
+            return false;
+        }
+
+        if (function_exists('idn_to_ascii')) {
+            $asciiDomain = idn_to_ascii($domain, IDNA_DEFAULT);
+            if ($asciiDomain === false || $asciiDomain === '') {
+                return false;
+            }
+
+            return filter_var($local . '@' . $asciiDomain, FILTER_VALIDATE_EMAIL) !== false;
+        }
+
+        return preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u', $email) === 1;
     }
 }

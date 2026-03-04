@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     admin_token TEXT NOT NULL UNIQUE,
+    password_hash TEXT NULL,
     is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

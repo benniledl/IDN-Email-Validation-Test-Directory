@@ -6,6 +6,25 @@ final class SubmissionRepository
 {
     public function __construct(private PDO $pdo)
     {
+        $this->ensureAdminPasswordSchema();
+    }
+
+    private function ensureAdminPasswordSchema(): void
+    {
+        $columnsStmt = $this->pdo->query('PRAGMA table_info(admin_users)');
+        $columns = $columnsStmt->fetchAll();
+        $hasPasswordHash = false;
+
+        foreach ($columns as $column) {
+            if ((string)($column['name'] ?? '') === 'password_hash') {
+                $hasPasswordHash = true;
+                break;
+            }
+        }
+
+        if (!$hasPasswordHash) {
+            $this->pdo->exec('ALTER TABLE admin_users ADD COLUMN password_hash TEXT NULL');
+        }
     }
 
     /** @param array<string, mixed> $software */
@@ -319,10 +338,42 @@ final class SubmissionRepository
 
     public function hideCustomSoftware(int $softwareId): bool
     {
-        $stmt = $this->pdo->prepare("UPDATE software SET is_hidden = 1 WHERE id = :id AND type = 'other'");
-        $stmt->execute([':id' => $softwareId]);
+        $this->pdo->beginTransaction();
 
-        return $stmt->rowCount() > 0;
+        try {
+            $softwareStmt = $this->pdo->prepare("UPDATE software SET is_hidden = 1 WHERE id = :id AND type = 'other'");
+            $softwareStmt->execute([':id' => $softwareId]);
+
+            if ($softwareStmt->rowCount() === 0) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            $submissionStmt = $this->pdo->prepare('UPDATE submissions SET is_hidden = 1 WHERE software_id = :software_id');
+            $submissionStmt->execute([':software_id' => $softwareId]);
+
+            $softwareCommentStmt = $this->pdo->prepare('UPDATE plugin_comments SET is_hidden = 1 WHERE software_id = :software_id');
+            $softwareCommentStmt->execute([':software_id' => $softwareId]);
+
+            $reportCommentStmt = $this->pdo->prepare(
+                'UPDATE submission_comments
+                 SET is_hidden = 1
+                 WHERE submission_id IN (
+                    SELECT id FROM submissions WHERE software_id = :software_id
+                 )'
+            );
+            $reportCommentStmt->execute([':software_id' => $softwareId]);
+
+            $this->pdo->commit();
+
+            return true;
+        } catch (Throwable) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            return false;
+        }
     }
 
     public function setSubmissionSeverityOverride(int $submissionId, ?string $severity): bool
@@ -368,38 +419,135 @@ final class SubmissionRepository
         ]);
     }
 
-    public function adminTokenExists(string $token): bool
+    /** @return array{id: int, name: string, email: string}|null */
+    public function verifyAdminCredentials(string $email, string $password): ?array
     {
-        $stmt = $this->pdo->prepare('SELECT id FROM admin_users WHERE admin_token = :token AND is_active = 1 LIMIT 1');
-        $stmt->execute([':token' => $token]);
+        $stmt = $this->pdo->prepare(
+            'SELECT id, name, email, password_hash
+             FROM admin_users
+             WHERE email = :email AND is_active = 1
+             LIMIT 1'
+        );
+        $stmt->execute([':email' => strtolower($email)]);
+        $admin = $stmt->fetch();
+        if ($admin === false) {
+            return null;
+        }
+
+        $passwordHash = trim((string)($admin['password_hash'] ?? ''));
+        if ($passwordHash === '' || !password_verify($password, $passwordHash)) {
+            return null;
+        }
+
+        if (password_needs_rehash($passwordHash, PASSWORD_DEFAULT)) {
+            $rehashStmt = $this->pdo->prepare('UPDATE admin_users SET password_hash = :password_hash WHERE id = :id');
+            $rehashStmt->execute([
+                ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+                ':id' => (int)$admin['id'],
+            ]);
+        }
+
+        return [
+            'id' => (int)$admin['id'],
+            'name' => (string)$admin['name'],
+            'email' => (string)$admin['email'],
+        ];
+    }
+
+    public function adminUserIsActive(int $adminId): bool
+    {
+        $stmt = $this->pdo->prepare('SELECT id FROM admin_users WHERE id = :id AND is_active = 1 LIMIT 1');
+        $stmt->execute([':id' => $adminId]);
 
         return $stmt->fetch() !== false;
     }
 
-    /** @return array<int, array<string, mixed>> */
-    public function activeAdmins(): array
+    public function activeAdminCount(): int
     {
-        $stmt = $this->pdo->query('SELECT id, name, email, created_at FROM admin_users WHERE is_active = 1 ORDER BY id ASC');
+        $stmt = $this->pdo->query('SELECT COUNT(id) AS count_all FROM admin_users WHERE is_active = 1');
+        $result = $stmt->fetch();
+
+        return (int)($result['count_all'] ?? 0);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function adminUsers(): array
+    {
+        $stmt = $this->pdo->query('SELECT id, name, email, is_active, created_at FROM admin_users ORDER BY is_active DESC, id ASC');
 
         return $stmt->fetchAll();
     }
 
-    public function addAdminUser(string $name, string $email, string $token): bool
+    /** @return array<string, mixed>|null */
+    public function adminUserById(int $adminId): ?array
     {
         $stmt = $this->pdo->prepare(
-            'INSERT INTO admin_users (name, email, admin_token, is_active, created_at)
-             VALUES (:name, :email, :token, 1, :created_at)'
+            'SELECT id, name, email, is_active, created_at
+             FROM admin_users
+             WHERE id = :id
+             LIMIT 1'
+        );
+        $stmt->execute([':id' => $adminId]);
+        $admin = $stmt->fetch();
+
+        return $admin === false ? null : $admin;
+    }
+
+    public function addAdminUser(string $name, string $email, string $password): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO admin_users (name, email, admin_token, password_hash, is_active, created_at)
+             VALUES (:name, :email, :token, :password_hash, 1, :created_at)'
         );
 
-        try {
-            return $stmt->execute([
-                ':name' => $name,
-                ':email' => strtolower($email),
-                ':token' => $token,
-                ':created_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
-            ]);
-        } catch (PDOException) {
-            return false;
+        $emailLower = strtolower($email);
+        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+        $createdAt = (new DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            try {
+                return $stmt->execute([
+                    ':name' => $name,
+                    ':email' => $emailLower,
+                    ':token' => $this->generateOpaqueAdminToken(),
+                    ':password_hash' => $passwordHash,
+                    ':created_at' => $createdAt,
+                ]);
+            } catch (PDOException $exception) {
+                $message = strtolower($exception->getMessage());
+                if (str_contains($message, 'admin_users.admin_token')) {
+                    continue;
+                }
+
+                return false;
+            }
         }
+
+        return false;
+    }
+
+    public function updateAdminPassword(int $adminId, string $password): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE admin_users SET password_hash = :password_hash WHERE id = :id');
+
+        return $stmt->execute([
+            ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            ':id' => $adminId,
+        ]) && $stmt->rowCount() > 0;
+    }
+
+    public function setAdminUserActive(int $adminId, bool $isActive): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE admin_users SET is_active = :is_active WHERE id = :id');
+
+        return $stmt->execute([
+            ':is_active' => $isActive ? 1 : 0,
+            ':id' => $adminId,
+        ]) && $stmt->rowCount() > 0;
+    }
+
+    private function generateOpaqueAdminToken(): string
+    {
+        return bin2hex(random_bytes(32));
     }
 }
