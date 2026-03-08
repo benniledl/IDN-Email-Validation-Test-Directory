@@ -219,9 +219,18 @@ $(function () {
         const $status = $('#submit-form-status');
         const $testedCountBadge = $('#tested-count-badge');
         const $submitterEmail = $('#submitter_email');
+        const $submitterEmailStatus = $('#submitter-email-status');
+        const defaultEmailHint = 'Not shown publicly.';
+        const validEmailHint = 'Valid email format. Not shown publicly.';
+        let emailValidationTimer = null;
+        let emailValidationRequest = null;
+        let lastValidatedEmail = '';
+        let lastEmailValidation = null;
         let emailEasterTimer = null;
         let easterAppliedValue = '';
         let easterCompleted = false;
+        let easterLockUntil = 0;
+        let deferredValidationResult = null;
 
         function selectedSoftwareType() {
             return String($('input[name="software_type"]:checked').val() || 'wp_plugin');
@@ -240,7 +249,7 @@ $(function () {
             if (isWordPressPlugin) {
                 $softwareUrlLabel.text('WordPress plugin URL *');
                 $softwareUrlHelp.removeClass('hidden').html('You can paste a plugin URL or slug (example: <code>contact-form-7</code>).');
-                $softwareUrl.attr('placeholder', 'e.g. contact-form-7 or https://wordpress.org/plugins/contact-form-7/');
+                $softwareUrl.attr('placeholder', 'e.g. https://wordpress.org/plugins/contact-form-7/');
             } else {
                 $softwareUrlLabel.text('External software URL *');
                 $softwareUrlHelp.addClass('hidden').text('');
@@ -332,13 +341,31 @@ $(function () {
             $status.removeAttr('hidden').html(messages.join('<br>'));
         }
 
+        function setEmailStatus(_tone, message) {
+            if ($submitterEmailStatus.length === 0) {
+                return;
+            }
+
+            $submitterEmailStatus
+                .removeClass('text-success text-error')
+                .addClass('text-base-content/70')
+                .text(message);
+        }
+
+        function isEasterProtectedValue(value) {
+            return hasCompletedUmlautDomainEmail(value) && easterAppliedValue === value && !easterCompleted && Date.now() < easterLockUntil;
+        }
+
+        function isCompletedEasterValue(value) {
+            return hasCompletedUmlautDomainEmail(value) && easterAppliedValue === value && easterCompleted;
+        }
+
         function clearEmailEasterEffect() {
             if (emailEasterTimer) {
                 clearTimeout(emailEasterTimer);
                 emailEasterTimer = null;
             }
 
-            $submitterEmail.removeClass('is-valid-easter');
             const $hint = $('#submitter_email_error');
             if ($hint.hasClass('easter-egg-hint')) {
                 $hint.remove();
@@ -361,23 +388,21 @@ $(function () {
 
         function triggerEmailEasterEgg() {
             const value = fieldValue('#submitter_email');
+
             if (!hasCompletedUmlautDomainEmail(value)) {
                 easterAppliedValue = '';
                 easterCompleted = false;
+                easterLockUntil = 0;
                 clearEmailEasterEffect();
-                clearFieldError($submitterEmail);
                 return;
             }
 
-            if (easterCompleted) {
-                return;
-            }
-
-            if (easterAppliedValue === value) {
+            if (easterCompleted || easterAppliedValue === value) {
                 return;
             }
 
             easterAppliedValue = value;
+            easterLockUntil = Date.now() + 1800;
             clearEmailEasterEffect();
             setFieldError($submitterEmail, 'Please enter a valid email address.');
 
@@ -406,9 +431,117 @@ $(function () {
                         $submitterEmail.removeClass('is-invalid-modern');
                         $error.removeClass('field-error').addClass('easter-egg-hint');
                         easterCompleted = true;
+
+                        if (deferredValidationResult && deferredValidationResult.email === fieldValue('#submitter_email')) {
+                            applyEmailValidationVisual(
+                                deferredValidationResult.email,
+                                deferredValidationResult.isValid,
+                                deferredValidationResult.message
+                            );
+                            deferredValidationResult = null;
+                        }
                     }
                 }, 180);
             }, 1000);
+        }
+
+        function applyEmailValidationVisual(validatedEmail, isValid, message) {
+            if (isValid) {
+                if (isCompletedEasterValue(validatedEmail)) {
+                    const $hint = $('#submitter_email_error');
+                    if ($hint.length > 0) {
+                        $hint.text('Sike - you thought you were slick. Valid email.');
+                        $hint.removeClass('field-error').addClass('easter-egg-hint');
+                    }
+
+                    $submitterEmail.removeClass('is-invalid-modern');
+                    setEmailStatus('neutral', validEmailHint);
+                    return;
+                }
+
+                clearFieldError($submitterEmail);
+                setEmailStatus('neutral', validEmailHint);
+                return;
+            }
+
+            setFieldError($submitterEmail, message);
+            setEmailStatus('neutral', defaultEmailHint);
+        }
+
+        function scheduleEmailValidation(delayMs) {
+            if (emailValidationTimer) {
+                clearTimeout(emailValidationTimer);
+            }
+
+            emailValidationTimer = setTimeout(function () {
+                validateEmailWithServer();
+            }, delayMs);
+        }
+
+        function validateEmailWithServer() {
+            const email = fieldValue('#submitter_email');
+            if (email === '') {
+                lastValidatedEmail = '';
+                lastEmailValidation = null;
+                deferredValidationResult = null;
+                clearFieldError($submitterEmail);
+                clearEmailEasterEffect();
+                easterAppliedValue = '';
+                easterCompleted = false;
+                setEmailStatus('neutral', defaultEmailHint);
+                return;
+            }
+
+            if (lastValidatedEmail === email && lastEmailValidation !== null) {
+                return;
+            }
+
+            if (emailValidationRequest && emailValidationRequest.readyState !== 4) {
+                emailValidationRequest.abort();
+            }
+
+            const requestEmail = email;
+            emailValidationRequest = $.ajax({
+                url: '/api/validate-email',
+                method: 'POST',
+                dataType: 'json',
+                data: { email: requestEmail },
+            });
+
+            emailValidationRequest.done(function (response) {
+                if (fieldValue('#submitter_email') !== requestEmail) {
+                    return;
+                }
+
+                const isValid = Boolean(response && response.is_valid);
+                const message = String((response && response.message) || (isValid ? 'Valid email format.' : 'Invalid email format.'));
+
+                lastValidatedEmail = requestEmail;
+                lastEmailValidation = isValid;
+
+                if (isEasterProtectedValue(requestEmail)) {
+                    deferredValidationResult = {
+                        email: requestEmail,
+                        isValid: isValid,
+                        message: message,
+                    };
+                    setEmailStatus('neutral', defaultEmailHint);
+                    return;
+                }
+
+                deferredValidationResult = null;
+                applyEmailValidationVisual(requestEmail, isValid, message);
+            });
+
+            emailValidationRequest.fail(function (_xhr, status) {
+                if (status === 'abort' || fieldValue('#submitter_email') !== requestEmail) {
+                    return;
+                }
+
+                lastValidatedEmail = '';
+                lastEmailValidation = null;
+                setEmailStatus('neutral', defaultEmailHint);
+            });
         }
 
         $form.on('change', 'input[name="software_type"]', function () {
@@ -427,12 +560,34 @@ $(function () {
         });
 
         $form.on('input', '#submitter_email', function () {
+            const currentEmail = fieldValue('#submitter_email');
+            if (currentEmail !== lastValidatedEmail) {
+                lastEmailValidation = null;
+            }
+
+            if (easterAppliedValue !== currentEmail) {
+                deferredValidationResult = null;
+            }
+
+            if (currentEmail === '') {
+                scheduleEmailValidation(300);
+                return;
+            }
+
+            setEmailStatus('neutral', 'Checking email format...');
+            scheduleEmailValidation(1000);
+            triggerEmailEasterEgg();
+        });
+
+        $form.on('blur', '#submitter_email', function () {
+            scheduleEmailValidation(0);
             triggerEmailEasterEgg();
         });
 
         $form.on('submit', function (event) {
             const issues = [];
             const softwareType = selectedSoftwareType();
+            const currentEmail = fieldValue('#submitter_email');
 
             if (fieldValue('#software_url') === '') {
                 setFieldError($('#software_url'), 'Software URL is required.');
@@ -449,16 +604,14 @@ $(function () {
                 issues.push('Please provide your name.');
             }
 
-            if (fieldValue('#submitter_email') === '') {
+            if (currentEmail === '') {
                 setFieldError($('#submitter_email'), 'Your email is required.');
                 issues.push('Please provide your email.');
-            } else {
-                const email = fieldValue('#submitter_email');
-                const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-                if (!emailOk) {
-                    setFieldError($('#submitter_email'), 'Please enter a valid email address.');
-                    issues.push('Please enter a valid email address.');
-                }
+            } else if (lastValidatedEmail !== currentEmail || lastEmailValidation === null) {
+                scheduleEmailValidation(0);
+                issues.push('Please wait a moment while we validate your email.');
+            } else if (lastEmailValidation === false) {
+                issues.push('Please enter a valid email address.');
             }
 
             const testedCount = $('.result-select').filter(function () {
@@ -480,7 +633,71 @@ $(function () {
         syncSoftwareFieldVisibility();
         updateTemplateOutcome();
         validateFormReady();
-        triggerEmailEasterEgg();
+        setEmailStatus('neutral', defaultEmailHint);
+
+        if (fieldValue('#submitter_email') !== '') {
+            scheduleEmailValidation(0);
+        }
+    }
+
+    function setupTemplateCopyButtons() {
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                return navigator.clipboard.writeText(text).then(function () {
+                    return true;
+                }).catch(function () {
+                    return false;
+                });
+            }
+
+            const $tmp = $('<textarea>')
+                .val(text)
+                .attr('readonly', true)
+                .css({ position: 'fixed', opacity: 0, left: '-9999px', top: '-9999px' })
+                .appendTo('body');
+
+            $tmp.trigger('focus').trigger('select');
+
+            let copied = false;
+            try {
+                copied = document.execCommand('copy');
+            } catch (_error) {
+                copied = false;
+            }
+
+            $tmp.remove();
+            return Promise.resolve(copied);
+        }
+
+        $(document).on('click', '.template-copy-btn', function () {
+            const $button = $(this);
+            const email = String($button.data('copy-email') || '');
+            if (email === '') {
+                return;
+            }
+
+            const originalTitle = String($button.data('original-title') || $button.attr('title') || 'Copy email template');
+            const originalLabel = String($button.data('original-label') || $button.attr('aria-label') || 'Copy email template');
+            $button.data('original-title', originalTitle);
+            $button.data('original-label', originalLabel);
+            $button.prop('disabled', true);
+
+            copyToClipboard(email).then(function (copied) {
+                if (copied) {
+                    $button.removeClass('btn-ghost btn-error').addClass('btn-success');
+                    $button.attr('title', 'Copied').attr('aria-label', 'Copied to clipboard');
+                } else {
+                    $button.removeClass('btn-ghost btn-success').addClass('btn-error');
+                    $button.attr('title', 'Copy failed').attr('aria-label', 'Copy failed');
+                }
+
+                setTimeout(function () {
+                    $button.removeClass('btn-success btn-error').addClass('btn-ghost');
+                    $button.attr('title', originalTitle).attr('aria-label', originalLabel);
+                    $button.prop('disabled', false);
+                }, 1400);
+            });
+        });
     }
 
     addDismissButtons();
@@ -488,4 +705,5 @@ $(function () {
     setupFloatingDropdowns();
     setupConfirmModal();
     setupSubmissionForm();
+    setupTemplateCopyButtons();
 });

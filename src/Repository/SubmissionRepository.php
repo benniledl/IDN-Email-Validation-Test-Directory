@@ -546,6 +546,13 @@ final class SubmissionRepository
         ]) && $stmt->rowCount() > 0;
     }
 
+    public function deleteAdminUser(int $adminId): bool
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM admin_users WHERE id = :id');
+
+        return $stmt->execute([':id' => $adminId]) && $stmt->rowCount() > 0;
+    }
+
     private function generateOpaqueAdminToken(): string
     {
         return bin2hex(random_bytes(32));

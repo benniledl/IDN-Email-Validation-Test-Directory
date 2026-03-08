@@ -99,11 +99,7 @@ CREATE INDEX IF NOT EXISTS idx_submission_comments_submission_id ON submission_c
 
 INSERT OR IGNORE INTO template_emails (id, email_address, expected_valid, severity_weight) VALUES
     (1, 'max@müller.de', 1, 3),
-    (2, 'info@büro.at', 1, 3),
-    (3, 'max@info.versicherung', 1, 3),
-    (4, 'max@newsletter.müller.de', 1, 2),
-    (5, 'max@news.info.versicherung', 1, 2),
-    (6, '用户@例子.广告', 1, 1),
-    (7, 'max@-müller.de', 0, 3),
-    (8, 'max@müller..de', 0, 3),
-    (9, 'max@müller', 0, 3);
+    (3, 'büro@test.de', 1, 1),
+    (4, 'max@info.versicherung', 1, 3),
+    (5, 'max@newsletter.müller.de', 1, 2),
+    (7, 'max@例子.广告', 1, 1);

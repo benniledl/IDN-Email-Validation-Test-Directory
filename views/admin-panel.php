@@ -11,7 +11,7 @@
                 <h1 id="admin-panel-title" class="text-2xl font-semibold tracking-tight">Administrator Panel</h1>
                 <p class="text-base-content/70">Manage admin accounts and authentication access.</p>
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
                 <a href="/software" class="btn btn-sm btn-ghost">Software overview</a>
                 <form method="post" action="/admin/logout" class="inline">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)$adminCsrfToken, ENT_QUOTES, 'UTF-8') ?>">
@@ -30,7 +30,42 @@
             <article class="card border border-base-300 bg-base-100 shadow-sm">
                 <div class="card-body">
                     <h2 class="card-title text-lg">Admin users</h2>
-                    <div class="overflow-x-auto md:overflow-visible">
+                    <div class="space-y-2 md:hidden">
+                        <?php foreach ($admins as $admin): ?>
+                            <?php
+                            $adminId = (int)$admin['id'];
+                            $isActive = (int)($admin['is_active'] ?? 0) === 1;
+                            $isCurrentSessionAdmin = (int)($adminSessionUserId ?? 0) === $adminId;
+                            ?>
+                            <article class="rounded-box border border-base-300 bg-base-100 p-3">
+                                <div class="mb-2 flex items-start justify-between gap-2">
+                                    <div>
+                                        <p class="font-semibold"><?= htmlspecialchars((string)$admin['name'], ENT_QUOTES, 'UTF-8') ?><?= $isCurrentSessionAdmin ? ' (You)' : '' ?></p>
+                                        <p class="text-xs text-base-content/70 break-all"><?= htmlspecialchars((string)$admin['email'], ENT_QUOTES, 'UTF-8') ?></p>
+                                    </div>
+                                    <span class="badge <?= $isActive ? 'badge-success' : 'badge-ghost' ?> badge-outline"><?= $isActive ? 'Active' : 'Inactive' ?></span>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <button type="button" data-admin-modal-open="admin-user-password-modal-<?= $adminId ?>" class="btn btn-xs btn-outline">Reset password</button>
+                                    <form method="post" action="/admin/users/status" data-confirm="<?= $isActive ? 'Deactivate this admin account?' : 'Activate this admin account?' ?>" class="inline">
+                                        <input type="hidden" name="_form" value="admin_set_status">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)$adminCsrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                                        <input type="hidden" name="admin_id" value="<?= $adminId ?>">
+                                        <input type="hidden" name="is_active" value="<?= $isActive ? '0' : '1' ?>">
+                                        <button type="submit" class="btn btn-xs btn-ghost"><?= $isActive ? 'Deactivate' : 'Activate' ?></button>
+                                    </form>
+                                    <form method="post" action="/admin/users/delete" data-confirm="Delete this admin account permanently? This cannot be undone." class="inline">
+                                        <input type="hidden" name="_form" value="admin_delete_user">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)$adminCsrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                                        <input type="hidden" name="admin_id" value="<?= $adminId ?>">
+                                        <button type="submit" class="btn btn-xs btn-error btn-outline">Delete</button>
+                                    </form>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div class="hidden overflow-x-auto md:block">
                         <table class="table table-zebra">
                             <thead><tr><th>Name</th><th>Email</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
                             <tbody>
@@ -56,6 +91,14 @@
                                                         <input type="hidden" name="admin_id" value="<?= $adminId ?>">
                                                         <input type="hidden" name="is_active" value="<?= $isActive ? '0' : '1' ?>">
                                                         <button type="submit" class="w-full text-left"><?= $isActive ? 'Deactivate account' : 'Activate account' ?></button>
+                                                    </form>
+                                                </li>
+                                                <li>
+                                                    <form method="post" action="/admin/users/delete" data-confirm="Delete this admin account permanently? This cannot be undone." class="w-full">
+                                                        <input type="hidden" name="_form" value="admin_delete_user">
+                                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)$adminCsrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                                                        <input type="hidden" name="admin_id" value="<?= $adminId ?>">
+                                                        <button type="submit" class="w-full text-left text-error">Delete account</button>
                                                     </form>
                                                 </li>
                                             </ul>

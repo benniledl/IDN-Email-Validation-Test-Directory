@@ -8,7 +8,8 @@ final class SubmissionController
         private TemplateEmailRepository $templateRepository,
         private SubmissionRepository $submissionRepository,
         private SeverityCalculator $severityCalculator,
-        private WordPressPluginService $wordPressPluginService
+        private WordPressPluginService $wordPressPluginService,
+        private EmailValidator $emailValidator
     ) {
     }
 
@@ -51,9 +52,12 @@ final class SubmissionController
             return ['message' => 'Please fill all required fields.', 'type' => 'danger'];
         }
 
-        if (!$this->isValidSubmitterEmail($payload['submitter_email'])) {
-            return ['message' => 'Please enter a valid email address.', 'type' => 'danger'];
+        $emailValidation = $this->emailValidator->validate($payload['submitter_email']);
+        if (!$emailValidation['is_valid']) {
+            return ['message' => $emailValidation['message'], 'type' => 'danger'];
         }
+
+        $payload['submitter_email'] = $emailValidation['normalized'];
 
         if ($software['type'] === 'wp_plugin' && $payload['wordpress_version'] === '') {
             return ['message' => 'Version tested is required for plugin submissions.', 'type' => 'danger'];
@@ -204,36 +208,16 @@ final class SubmissionController
         return $matches[1];
     }
 
-    private function isValidSubmitterEmail(string $email): bool
+    public function validateEmailApi(array $post): void
     {
-        $email = trim($email);
-        if ($email === '') {
-            return false;
-        }
+        $email = trim((string)($post['email'] ?? ''));
+        $result = $this->emailValidator->validate($email);
 
-        if (filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
-            return true;
-        }
-
-        $parts = explode('@', $email);
-        if (count($parts) !== 2) {
-            return false;
-        }
-
-        [$local, $domain] = $parts;
-        if ($local === '' || $domain === '' || str_contains($domain, '..')) {
-            return false;
-        }
-
-        if (function_exists('idn_to_ascii')) {
-            $asciiDomain = idn_to_ascii($domain, IDNA_DEFAULT);
-            if ($asciiDomain === false || $asciiDomain === '') {
-                return false;
-            }
-
-            return filter_var($local . '@' . $asciiDomain, FILTER_VALIDATE_EMAIL) !== false;
-        }
-
-        return preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u', $email) === 1;
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode([
+            'is_valid' => $result['is_valid'],
+            'normalized' => $result['normalized'],
+            'message' => $result['message'],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 }

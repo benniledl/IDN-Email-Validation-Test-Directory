@@ -416,6 +416,41 @@ final class DirectoryController
     }
 
     /** @return array{message: string, type: string} */
+    public function adminDeleteUser(array $post): array
+    {
+        $authError = $this->adminAuthError($post);
+        if ($authError !== null) {
+            return $authError;
+        }
+
+        $adminId = (int)($post['admin_id'] ?? 0);
+        if ($adminId <= 0) {
+            return ['message' => 'Invalid admin user selected.', 'type' => 'danger'];
+        }
+
+        $targetAdmin = $this->submissionRepository->adminUserById($adminId);
+        if ($targetAdmin === null) {
+            return ['message' => 'Admin user not found.', 'type' => 'danger'];
+        }
+
+        $currentSessionUserId = (int)($_SESSION[self::ADMIN_SESSION_USER_ID_KEY] ?? 0);
+        if ($currentSessionUserId > 0 && $currentSessionUserId === $adminId) {
+            return ['message' => 'You cannot delete your own account while logged in.', 'type' => 'danger'];
+        }
+
+        $isTargetActive = (int)($targetAdmin['is_active'] ?? 0) === 1;
+        if ($isTargetActive && $this->submissionRepository->activeAdminCount() <= 1) {
+            return ['message' => 'At least one active admin account must remain.', 'type' => 'danger'];
+        }
+
+        if (!$this->submissionRepository->deleteAdminUser($adminId)) {
+            return ['message' => 'Could not delete admin user.', 'type' => 'danger'];
+        }
+
+        return ['message' => 'Admin user deleted.', 'type' => 'success'];
+    }
+
+    /** @return array{message: string, type: string} */
     public function adminLogin(array $post): array
     {
         $loginMode = trim((string)($post['login_mode'] ?? 'password'));

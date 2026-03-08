@@ -4,10 +4,10 @@
 
 This platform collects and publicly documents **test results of IDN (Internationalized Domain Name) email validation behavior** in software.
 
-The focus is strictly on:
+The focus is on practical validation compatibility for:
 
 > **IDN domain validation** (e.g. `max@müller.de`)
-> NOT testing SMTPUTF8 / UTF-8 local-part addresses.
+> plus selected **SMTPUTF8 local-part** examples (e.g. `büro@test.de`) to expose real-world validator gaps.
 
 The platform allows users to:
 
@@ -26,7 +26,8 @@ Submissions are instantly public but can be hidden by an admin.
 
 ## Included
 
-* IDN domain validation testing only
+* IDN domain validation testing
+* Selected SMTPUTF8 / UTF-8 local-part test cases
 * WordPress plugins (primary focus)
 * Other arbitrary software (secondary support)
 * Public test result directory
@@ -37,7 +38,6 @@ Submissions are instantly public but can be hidden by an admin.
 ## Explicitly Excluded
 
 * SMTP delivery testing
-* SMTPUTF8 / non-ASCII local-part testing
 * Environment tracking (PHP, hosting stack, mail server)
 * Login system
 * Duplicate detection
@@ -103,7 +103,7 @@ User sees predefined email template list.
 Each template email includes:
 
 * Email address
-* Expected validity (valid or invalid)
+* Expected validity (currently valid-only templates)
 * Copy button
 
 User tests addresses manually in the software.
@@ -135,30 +135,26 @@ Admin may later:
 
 # 4. Email Template Definition
 
-Only IDN domain testing.
+IDN domain testing with a small set of UTF-8 local-part cases for interoperability checks.
 
-Examples (final list to be defined later):
+Examples (representative):
 
 Valid (must be accepted):
 
 * `max@müller.de`
-* `info@büro.at`
-* `kontakt@straße.de`
-
-Invalid (must be rejected):
-
-* `max@-müller.de`
-* `max@müller..de`
-* `max@müller`
+* `max@info.versicherung`
+* `max@newsletter.müller.de`
+* `max@例子.广告`
+* `büro@test.de`
 
 Each template entry contains:
 
 * ID
 * Email address
-* Expected validity (boolean)
+* Expected validity (currently all templates are valid)
 * Severity weight (for auto scoring)
 
-No SMTPUTF8 examples (no UTF-8 local-part).
+Templates include selected SMTPUTF8 examples where useful for plugin interoperability testing.
 
 ---
 
@@ -197,7 +193,6 @@ Examples:
 ### NONE
 
 All expected valid emails accepted
-All expected invalid emails rejected
 
 ---
 
@@ -208,7 +203,7 @@ For each tested address:
 If:
 
 * Expected valid AND Rejected → validation failure
-* Expected invalid AND Accepted → validation failure
+* (If invalid templates are reintroduced later) Expected invalid AND Accepted → validation failure
 
 Each template email has a predefined severity weight.
 
@@ -474,8 +469,8 @@ No spam filtering.
 
 # 12. Explicit Constraints
 
-* IDN domain testing only
-* No SMTPUTF8 testing
+* IDN domain testing plus selected SMTPUTF8 local-part interoperability cases
+* No full SMTP delivery testing
 * No environment details except WP version
 * No login system
 * No duplicate prevention
@@ -489,7 +484,7 @@ No spam filtering.
 
 Architecture should allow:
 
-* Adding SMTPUTF8 testing later
+* Expanding SMTPUTF8 local-part coverage further
 * Adding version filtering
 * Adding duplicate detection
 * Adding export

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../src/Support/View.php';
+require_once __DIR__ . '/../src/EmailValidator.php';
 require_once __DIR__ . '/../src/Service/SeverityCalculator.php';
 require_once __DIR__ . '/../src/Service/WordPressPluginService.php';
 require_once __DIR__ . '/../src/Repository/TemplateEmailRepository.php';
@@ -19,9 +20,10 @@ $templateRepository = new TemplateEmailRepository($pdo);
 $submissionRepository = new SubmissionRepository($pdo);
 $severityCalculator = new SeverityCalculator();
 $wordPressPluginService = new WordPressPluginService();
+$emailValidator = new EmailValidator();
 
 $homeController = new HomeController($submissionRepository);
-$submissionController = new SubmissionController($templateRepository, $submissionRepository, $severityCalculator, $wordPressPluginService);
+$submissionController = new SubmissionController($templateRepository, $submissionRepository, $severityCalculator, $wordPressPluginService, $emailValidator);
 $directoryController = new DirectoryController($submissionRepository, $wordPressPluginService);
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -29,6 +31,11 @@ $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 
 if ($method === 'GET' && $path === '/') {
     $homeController->index();
+    exit;
+}
+
+if ($method === 'GET' && $path === '/about') {
+    $homeController->about();
     exit;
 }
 
@@ -46,6 +53,11 @@ if ($method === 'POST' && $path === '/submissions') {
     }
 
     $submissionController->create($flash['message'], $flash['type'], $_POST);
+    exit;
+}
+
+if ($method === 'POST' && $path === '/api/validate-email') {
+    $submissionController->validateEmailApi($_POST);
     exit;
 }
 
@@ -123,13 +135,24 @@ if ($method === 'POST' && $path === '/admin/users') {
 
 if ($method === 'POST' && $path === '/admin/users/password') {
     $flash = $directoryController->adminResetUserPassword($_POST);
+    if (($flash['type'] ?? 'danger') === 'success') {
+        $directoryController->adminPanel($flash['message'], $flash['type']);
+        exit;
+    }
+
     $directoryController->adminPanel($flash['message'], $flash['type'], $_POST);
     exit;
 }
 
 if ($method === 'POST' && $path === '/admin/users/status') {
     $flash = $directoryController->adminSetUserStatus($_POST);
-    $directoryController->adminPanel($flash['message'], $flash['type'], $_POST);
+    $directoryController->adminPanel($flash['message'], $flash['type']);
+    exit;
+}
+
+if ($method === 'POST' && $path === '/admin/users/delete') {
+    $flash = $directoryController->adminDeleteUser($_POST);
+    $directoryController->adminPanel($flash['message'], $flash['type']);
     exit;
 }
 

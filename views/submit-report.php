@@ -60,7 +60,7 @@
                     <div>
                         <label for="submitter_email" class="label"><span class="label-text font-medium">Your email *</span></label>
                         <input id="submitter_email" name="submitter_email" type="email" class="input input-bordered w-full" value="<?= htmlspecialchars($isOldForm ? (string)($old['submitter_email'] ?? '') : '', ENT_QUOTES, 'UTF-8') ?>" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" required>
-                        <p class="mt-1 text-xs text-base-content/70">Visible only to administrators.</p>
+                        <p class="mt-1 text-xs text-base-content/70" id="submitter-email-status">Not shown publicly.</p>
                     </div>
                 </div>
             </section>
@@ -76,7 +76,7 @@
                     <table class="table table-zebra">
                         <thead>
                         <tr>
-                            <th>Email template</th>
+                            <th>Email</th>
                             <th>Expected</th>
                             <th>Your result *</th>
                         </tr>
@@ -84,11 +84,27 @@
                         <tbody>
                         <?php foreach ($templates as $template): ?>
                             <?php $expectedLabel = (int)$template['expected_valid'] === 1 ? 'Valid' : 'Invalid'; ?>
+                            <?php $templateEmailValue = (string)$template['email_address']; ?>
+                            <?php $oldResult = $isOldForm ? (string)($old['result_' . (int)$template['id']] ?? 'not_tested') : 'not_tested'; ?>
                             <tr>
-                                <td><code><?= htmlspecialchars((string)$template['email_address'], ENT_QUOTES, 'UTF-8') ?></code></td>
-                                <td><span class="badge badge-ghost"><?= $expectedLabel ?></span></td>
                                 <td>
-                                    <?php $oldResult = $isOldForm ? (string)($old['result_' . (int)$template['id']] ?? 'not_tested') : 'not_tested'; ?>
+                                    <div class="flex min-w-0 items-start gap-1.5">
+                                        <code class="min-w-0 break-all text-xs sm:text-sm"><?= htmlspecialchars($templateEmailValue, ENT_QUOTES, 'UTF-8') ?></code>
+                                        <button
+                                            type="button"
+                                            class="btn btn-xs btn-ghost template-copy-btn shrink-0"
+                                            data-copy-email="<?= htmlspecialchars($templateEmailValue, ENT_QUOTES, 'UTF-8') ?>"
+                                            aria-label="Copy <?= htmlspecialchars($templateEmailValue, ENT_QUOTES, 'UTF-8') ?>"
+                                            title="Copy email template">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2M10 20h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                            <span class="sr-only">Copy template email</span>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-ghost badge-sm"><?= $expectedLabel ?></span></td>
+                                <td>
                                     <select
                                         name="result_<?= (int)$template['id'] ?>"
                                         class="select select-bordered select-sm w-full max-w-xs result-select state-not-tested"
@@ -111,7 +127,7 @@
                 <div class="grid gap-3 md:grid-cols-3">
                     <div>
                         <label for="wordpress_version" class="label"><span class="label-text">Version tested</span></label>
-                        <input id="wordpress_version" name="wordpress_version" class="input input-bordered w-full" value="<?= htmlspecialchars($isOldForm ? (string)($old['wordpress_version'] ?? '') : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. 6.8.1">
+                        <input id="wordpress_version" name="wordpress_version" class="input input-bordered w-full" value="<?= htmlspecialchars($isOldForm ? (string)($old['wordpress_version'] ?? '') : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. 1.2.1">
                     </div>
                     <div>
                         <label for="submitter_role" class="label"><span class="label-text">Role</span></label>
@@ -133,7 +149,7 @@
                 </div>
             </section>
 
-            <div class="flex justify-end gap-2">
+            <div class="flex flex-wrap justify-end gap-2">
                 <a href="/software" class="btn btn-ghost">Cancel</a>
                 <button id="submit-button" class="btn btn-primary" type="submit">Publish report</button>
             </div>

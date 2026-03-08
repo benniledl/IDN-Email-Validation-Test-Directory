@@ -111,6 +111,11 @@ body.admin-modal-open { overflow: hidden; }
 
 .table td {
     border-color: #e5edf5;
+    vertical-align: top;
+}
+
+.table th {
+    vertical-align: top;
 }
 
 .badge {
@@ -247,5 +252,16 @@ body.admin-modal-open { overflow: hidden; }
 
     .table {
         font-size: 0.88rem;
+    }
+
+    .table :where(th, td) {
+        white-space: normal;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    .table code {
+        white-space: normal;
+        word-break: break-all;
     }
 }
