@@ -8,6 +8,96 @@ final class WordPressPluginService
     private const CACHE_TTL_SECONDS = 604800; // 7 days
     private const META_CACHE_DIR = '/storage/cache/wp-plugin-meta';
 
+    public function fetchLatestVersionBySlug(string $slug): ?string
+    {
+        $normalizedSlug = trim(strtolower($slug));
+        if ($normalizedSlug === '') {
+            return null;
+        }
+
+        $endpoint = sprintf('https://api.wordpress.org/plugins/info/1.0/%s.json', rawurlencode($normalizedSlug));
+        $response = $this->request($endpoint);
+        if ($response === null) {
+            return null;
+        }
+
+        $decoded = json_decode($response, true);
+        if (!is_array($decoded)) {
+            return null;
+        }
+
+        $version = trim((string)($decoded['version'] ?? ''));
+
+        return $version === '' ? null : $version;
+    }
+
+    /** @return array<int, array{slug: string, name: string}> */
+    public function cachedSlugSuggestions(string $query, int $limit = 8): array
+    {
+        $needle = strtolower(trim($query));
+        if ($needle === '' || strlen($needle) < 4) {
+            return [];
+        }
+
+        $safeNeedle = preg_replace('/[^a-z0-9-]/', '', $needle);
+        if (!is_string($safeNeedle) || $safeNeedle === '') {
+            return [];
+        }
+
+        $results = [];
+
+        $metaDir = dirname(__DIR__, 2) . self::META_CACHE_DIR;
+        if (is_dir($metaDir)) {
+            $metaFiles = glob($metaDir . '/*.json') ?: [];
+            foreach ($metaFiles as $metaFile) {
+                $slug = strtolower((string)pathinfo($metaFile, PATHINFO_FILENAME));
+                if ($slug === '' || !str_starts_with($slug, $safeNeedle)) {
+                    continue;
+                }
+
+                $name = $slug;
+                $contents = @file_get_contents($metaFile);
+                if (is_string($contents) && $contents !== '') {
+                    $decoded = json_decode($contents, true);
+                    if (is_array($decoded) && isset($decoded['data']) && is_array($decoded['data'])) {
+                        $candidateName = trim(html_entity_decode(strip_tags((string)($decoded['data']['name'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                        if ($candidateName !== '') {
+                            $name = $candidateName;
+                        }
+                    }
+                }
+
+                $results[$slug] = ['slug' => $slug, 'name' => $name];
+            }
+        }
+
+        $assetsDir = dirname(__DIR__, 2) . '/public/assets/plugin-assets';
+        if (is_dir($assetsDir)) {
+            $assetFiles = glob($assetsDir . '/*-icon-*') ?: [];
+            foreach ($assetFiles as $assetFile) {
+                $base = strtolower((string)pathinfo($assetFile, PATHINFO_BASENAME));
+                if (preg_match('/^([a-z0-9-]+)-icon-/', $base, $matches) !== 1) {
+                    continue;
+                }
+
+                $slug = trim((string)($matches[1] ?? ''));
+                if ($slug === '' || !str_starts_with($slug, $safeNeedle)) {
+                    continue;
+                }
+
+                if (!isset($results[$slug])) {
+                    $results[$slug] = ['slug' => $slug, 'name' => $slug];
+                }
+            }
+        }
+
+        usort($results, static function (array $a, array $b): int {
+            return strcmp((string)$a['slug'], (string)$b['slug']);
+        });
+
+        return array_slice($results, 0, $limit);
+    }
+
     /** @return array{name: string, description: string, icon_url: ?string, icon_2x_url: ?string, banner_url: ?string, banner_2x_url: ?string, author: string, active_installs: string, tested: string}|null */
     public function fetchBySlug(string $slug): ?array
     {

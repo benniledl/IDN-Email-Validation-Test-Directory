@@ -7,7 +7,7 @@
         <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
                 <h1 id="submit-title" class="text-2xl font-semibold tracking-tight">Submit Report</h1>
-                <p class="text-base-content/70">Fast workflow: software, reporter, and tested outcomes.</p>
+                <p class="text-base-content/70">1. Software, 2. Reporter, 3. Results</p>
             </div>
             <a href="/software" class="btn btn-sm btn-ghost">Back to software</a>
         </div>
@@ -21,7 +21,10 @@
         <form method="post" action="/submissions" class="grid gap-4" novalidate>
             <input type="hidden" name="_form" value="submit_report">
             <section class="rounded-box border border-base-300 bg-base-100 p-4">
-                <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-base-content/70">1. Software</h2>
+                <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/70">1. Software</h2>
+                    <a href="<?= htmlspecialchars((string)($playgroundLaunchUrl ?? 'https://playground.wordpress.net/'), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Need a testing environment?</a>
+                </div>
 
                 <div class="mb-3 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Software type">
                     <input type="radio" class="btn-check" name="software_type" id="software_type_wp" value="wp_plugin" <?= (($isOldForm ? (string)($old['software_type'] ?? 'wp_plugin') : 'wp_plugin') === 'wp_plugin') ? 'checked' : '' ?>>
@@ -44,8 +47,9 @@
                     </div>
                     <div>
                         <label for="software_url" class="label"><span class="label-text font-medium" id="software_url_label">WordPress plugin URL *</span></label>
-                        <input id="software_url" name="software_url" class="input input-bordered w-full" value="<?= htmlspecialchars($isOldForm ? (string)($old['software_url'] ?? '') : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. contact-form-7 or https://wordpress.org/plugins/contact-form-7/" required>
+                        <input id="software_url" name="software_url" class="input input-bordered w-full" value="<?= htmlspecialchars($isOldForm ? (string)($old['software_url'] ?? '') : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. contact-form-7 or https://wordpress.org/plugins/contact-form-7/" list="plugin-slug-suggestions" required>
                         <p class="mt-1 text-xs text-base-content/70" id="software_url_help">You can paste a plugin URL or slug.</p>
+                        <datalist id="plugin-slug-suggestions"></datalist>
                     </div>
                 </div>
             </section>
@@ -63,6 +67,10 @@
                         <p class="mt-1 text-xs text-base-content/70" id="submitter-email-status">Not shown publicly.</p>
                     </div>
                 </div>
+                <label class="label mt-2 cursor-pointer justify-start gap-2">
+                    <input id="remember_reporter" name="remember_reporter" type="checkbox" value="1" class="checkbox checkbox-sm">
+                    <span class="label-text text-sm">Remember name and email on this device (local browser storage).</span>
+                </label>
             </section>
 
             <section class="rounded-box border border-base-300 bg-base-100 p-4">
@@ -128,6 +136,7 @@
                     <div>
                         <label for="wordpress_version" class="label"><span class="label-text">Version tested</span></label>
                         <input id="wordpress_version" name="wordpress_version" class="input input-bordered w-full" value="<?= htmlspecialchars($isOldForm ? (string)($old['wordpress_version'] ?? '') : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. 1.2.1">
+                        <p class="mt-1 text-xs text-base-content/60" id="wordpress-version-status"></p>
                     </div>
                     <div>
                         <label for="submitter_role" class="label"><span class="label-text">Role</span></label>

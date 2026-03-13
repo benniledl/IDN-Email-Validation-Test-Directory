@@ -7,9 +7,11 @@ final class SubmissionController
     public function __construct(
         private TemplateEmailRepository $templateRepository,
         private SubmissionRepository $submissionRepository,
+        private DirectoryRepository $directoryRepository,
         private SeverityCalculator $severityCalculator,
         private WordPressPluginService $wordPressPluginService,
-        private EmailValidator $emailValidator
+        private EmailValidator $emailValidator,
+        private RateLimiter $rateLimiter
     ) {
     }
 
@@ -17,6 +19,7 @@ final class SubmissionController
     {
         View::render('submit-report', [
             'templates' => $this->templateRepository->all(),
+            'playgroundLaunchUrl' => 'https://playground.wordpress.net/',
             'flash' => $flash,
             'flashType' => $flashType,
             'old' => $old,
@@ -206,6 +209,67 @@ final class SubmissionController
         }
 
         return $matches[1];
+    }
+
+    public function pluginVersionApi(array $query): void
+    {
+        $slug = $this->extractPluginSlug((string)($query['slug'] ?? ''));
+        $version = null;
+
+        if ($slug !== null && $this->allowPluginProxyRequest()) {
+            $version = $this->wordPressPluginService->fetchLatestVersionBySlug($slug);
+        }
+
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        echo json_encode([
+            'slug' => $slug,
+            'version' => $version,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    public function pluginSlugSuggestionsApi(array $query): void
+    {
+        $needle = trim(strtolower((string)($query['q'] ?? '')));
+        $suggestions = [];
+
+        if (strlen($needle) >= 4) {
+            $dbSuggestions = $this->directoryRepository->wpPluginSlugSuggestions($needle, 8);
+            $cachedSuggestions = $this->wordPressPluginService->cachedSlugSuggestions($needle, 8);
+
+            $merged = [];
+            foreach (array_merge($dbSuggestions, $cachedSuggestions) as $item) {
+                $slug = strtolower(trim((string)($item['slug'] ?? '')));
+                if ($slug === '' || isset($merged[$slug])) {
+                    continue;
+                }
+
+                $name = trim((string)($item['name'] ?? ''));
+                $name = trim(html_entity_decode(strip_tags($name), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                $merged[$slug] = [
+                    'slug' => $slug,
+                    'name' => $name === '' ? $slug : $name,
+                ];
+            }
+
+            $suggestions = array_slice(array_values($merged), 0, 8);
+        }
+
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode([
+            'suggestions' => $suggestions,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    private function allowPluginProxyRequest(): bool
+    {
+        $sessionAllowed = $this->rateLimiter->allow('wp-plugin-version-session-' . session_id(), 24, 600);
+        if (!$sessionAllowed) {
+            return false;
+        }
+
+        return $this->rateLimiter->allow('wp-plugin-version-global', 240, 3600);
     }
 
     public function validateEmailApi(array $post): void

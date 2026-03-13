@@ -3,11 +3,19 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../src/Support/View.php';
+require_once __DIR__ . '/../src/Support/Router.php';
+require_once __DIR__ . '/../src/Support/Request.php';
+require_once __DIR__ . '/../src/Support/RateLimiter.php';
 require_once __DIR__ . '/../src/EmailValidator.php';
 require_once __DIR__ . '/../src/Service/SeverityCalculator.php';
 require_once __DIR__ . '/../src/Service/WordPressPluginService.php';
 require_once __DIR__ . '/../src/Repository/TemplateEmailRepository.php';
 require_once __DIR__ . '/../src/Repository/SubmissionRepository.php';
+require_once __DIR__ . '/../src/Repository/DirectoryRepository.php';
+require_once __DIR__ . '/../src/Repository/CommentRepository.php';
+require_once __DIR__ . '/../src/Repository/AdminUserRepository.php';
+require_once __DIR__ . '/../src/Security/AdminSessionService.php';
+require_once __DIR__ . '/../src/Security/CommentSpamService.php';
 require_once __DIR__ . '/../src/Controller/HomeController.php';
 require_once __DIR__ . '/../src/Controller/SubmissionController.php';
 require_once __DIR__ . '/../src/Controller/DirectoryController.php';
@@ -18,180 +26,204 @@ $pdo = require __DIR__ . '/../config/database.php';
 
 $templateRepository = new TemplateEmailRepository($pdo);
 $submissionRepository = new SubmissionRepository($pdo);
+$directoryRepository = new DirectoryRepository($pdo);
+$commentRepository = new CommentRepository($pdo);
+$adminUserRepository = new AdminUserRepository($pdo);
 $severityCalculator = new SeverityCalculator();
 $wordPressPluginService = new WordPressPluginService();
 $emailValidator = new EmailValidator();
+$rateLimiter = new RateLimiter();
+$adminSessionService = new AdminSessionService($adminUserRepository);
+$commentSpamService = new CommentSpamService();
 
-$homeController = new HomeController($submissionRepository);
-$submissionController = new SubmissionController($templateRepository, $submissionRepository, $severityCalculator, $wordPressPluginService, $emailValidator);
-$directoryController = new DirectoryController($submissionRepository, $wordPressPluginService);
+$homeController = new HomeController($directoryRepository);
+$submissionController = new SubmissionController(
+    $templateRepository,
+    $submissionRepository,
+    $directoryRepository,
+    $severityCalculator,
+    $wordPressPluginService,
+    $emailValidator,
+    $rateLimiter
+);
+$directoryController = new DirectoryController(
+    $directoryRepository,
+    $commentRepository,
+    $adminUserRepository,
+    $adminSessionService,
+    $commentSpamService,
+    $wordPressPluginService
+);
 
-$method = $_SERVER['REQUEST_METHOD'];
-$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$request = Request::fromGlobals();
+$method = $request->method();
+$path = $request->path();
+$query = $request->queryAll();
+$post = $request->postAll();
 
-if ($method === 'GET' && $path === '/') {
+$router = new Router();
+
+$router->add('GET', '/', function () use ($homeController): void {
     $homeController->index();
-    exit;
-}
+});
 
-if ($method === 'GET' && $path === '/about') {
+$router->add('GET', '/about', function () use ($homeController): void {
     $homeController->about();
-    exit;
-}
+});
 
-if ($method === 'GET' && $path === '/submit-report') {
+$router->add('GET', '/impressum', function () use ($homeController): void {
+    $homeController->imprint();
+});
+
+$router->add('GET', '/datenschutz', function () use ($homeController): void {
+    $homeController->privacy();
+});
+
+$router->add('GET', '/submit-report', function () use ($submissionController): void {
     $submissionController->create();
-    exit;
-}
+});
 
-if ($method === 'POST' && $path === '/submissions') {
-    $flash = $submissionController->store($_POST);
-
+$router->add('POST', '/submissions', function () use ($submissionController, $post): void {
+    $flash = $submissionController->store($post);
     if (($flash['type'] ?? 'info') === 'success' && !empty($flash['submission_id'])) {
         header('Location: /reports/' . (int)$flash['submission_id']);
-        exit;
+        return;
     }
 
-    $submissionController->create($flash['message'], $flash['type'], $_POST);
-    exit;
-}
+    $submissionController->create($flash['message'], $flash['type'], $post);
+});
 
-if ($method === 'POST' && $path === '/api/validate-email') {
-    $submissionController->validateEmailApi($_POST);
-    exit;
-}
+$router->add('POST', '/api/validate-email', function () use ($submissionController, $post): void {
+    $submissionController->validateEmailApi($post);
+});
 
-if ($method === 'GET' && $path === '/software') {
-    $directoryController->softwareIndex();
-    exit;
-}
+$router->add('GET', '/api/plugin-version', function () use ($submissionController, $query): void {
+    $submissionController->pluginVersionApi($query);
+});
 
-if ($method === 'GET' && $path === '/admin/login') {
+$router->add('GET', '/api/plugin-slug-suggestions', function () use ($submissionController, $query): void {
+    $submissionController->pluginSlugSuggestionsApi($query);
+});
+
+$router->add('GET', '/software', function () use ($directoryController, $query): void {
+    $directoryController->softwareIndex((string)($query['q'] ?? ''));
+});
+
+$router->add('GET', '/reports', function () use ($directoryController, $query): void {
+    $directoryController->reportsIndex((string)($query['q'] ?? ''), (string)($query['severity'] ?? ''));
+});
+
+$router->add('GET', '/admin/login', function () use ($directoryController): void {
     $directoryController->adminLoginPage();
-    exit;
-}
+});
 
-if ($method === 'GET' && $path === '/admin') {
+$router->add('GET', '/admin', function () use ($directoryController): void {
     $directoryController->adminPanel();
-    exit;
-}
+});
 
-if ($method === 'POST' && $path === '/admin/login') {
-    $flash = $directoryController->adminLogin($_POST);
+$router->add('POST', '/admin/login', function () use ($directoryController, $post): void {
+    $flash = $directoryController->adminLogin($post);
     if (($flash['type'] ?? 'danger') === 'success') {
         $directoryController->adminPanel($flash['message'], $flash['type']);
-        exit;
+        return;
     }
 
-    $directoryController->adminLoginPage($flash['message'], $flash['type'], $_POST);
-    exit;
-}
+    $directoryController->adminLoginPage($flash['message'], $flash['type'], $post);
+});
 
-if ($method === 'POST' && $path === '/admin/logout') {
-    $flash = $directoryController->adminLogout($_POST);
+$router->add('POST', '/admin/logout', function () use ($directoryController, $post): void {
+    $flash = $directoryController->adminLogout($post);
     $directoryController->adminLoginPage($flash['message'], $flash['type']);
-    exit;
-}
+});
 
-if ($method === 'GET' && preg_match('#^/software/(\d+)$#', $path, $matches) === 1) {
+$router->addRegex('GET', '#^/software/(\d+)$#', function (array $matches) use ($directoryController): void {
     $directoryController->softwareDetail((int)$matches[1]);
-    exit;
-}
+});
 
-if ($method === 'POST' && preg_match('#^/software/(\d+)/comments$#', $path, $matches) === 1) {
+$router->addRegex('POST', '#^/software/(\d+)/comments$#', function (array $matches) use ($directoryController, $post): void {
     $softwareId = (int)$matches[1];
-    $flash = $directoryController->storeSoftwareComment($softwareId, $_POST);
-    $directoryController->softwareDetail($softwareId, $flash['message'], $flash['type'], $_POST);
-    exit;
-}
+    $flash = $directoryController->storeSoftwareComment($softwareId, $post);
+    $directoryController->softwareDetail($softwareId, $flash['message'], $flash['type'], $post);
+});
 
-if ($method === 'POST' && preg_match('#^/software/(\d+)/admin/solution$#', $path, $matches) === 1) {
+$router->addRegex('POST', '#^/software/(\d+)/admin/solution$#', function (array $matches) use ($directoryController, $post): void {
     $softwareId = (int)$matches[1];
-    $flash = $directoryController->adminAddSoftwareSolution($softwareId, $_POST);
-    $directoryController->softwareDetail($softwareId, $flash['message'], $flash['type'], $_POST);
-    exit;
-}
+    $flash = $directoryController->adminAddSoftwareSolution($softwareId, $post);
+    $directoryController->softwareDetail($softwareId, $flash['message'], $flash['type'], $post);
+});
 
-if ($method === 'POST' && preg_match('#^/software/(\d+)/comments/(\d+)/hide$#', $path, $matches) === 1) {
+$router->addRegex('POST', '#^/software/(\d+)/comments/(\d+)/hide$#', function (array $matches) use ($directoryController, $post): void {
     $softwareId = (int)$matches[1];
-    $flash = $directoryController->adminHideSoftwareComment((int)$matches[2]);
-    $directoryController->softwareDetail($softwareId, $flash['message'], $flash['type'], $_POST);
-    exit;
-}
+    $flash = $directoryController->adminHideSoftwareComment((int)$matches[2], $post);
+    $directoryController->softwareDetail($softwareId, $flash['message'], $flash['type'], $post);
+});
 
-
-if ($method === 'POST' && preg_match('#^/software/(\d+)/admin/hide$#', $path, $matches) === 1) {
+$router->addRegex('POST', '#^/software/(\d+)/admin/hide$#', function (array $matches) use ($directoryController, $post): void {
     $softwareId = (int)$matches[1];
-    $flash = $directoryController->adminHideCustomSoftware($softwareId);
-    $directoryController->softwareIndex($flash['message'], $flash['type']);
-    exit;
-}
+    $flash = $directoryController->adminHideCustomSoftware($softwareId, $post);
+    $directoryController->softwareIndex('', $flash['message'], $flash['type']);
+});
 
-if ($method === 'POST' && $path === '/admin/users') {
-    $flash = $directoryController->adminAddUser($_POST);
-    $directoryController->adminPanel($flash['message'], $flash['type'], $_POST);
-    exit;
-}
+$router->add('POST', '/admin/users', function () use ($directoryController, $post): void {
+    $flash = $directoryController->adminAddUser($post);
+    $directoryController->adminPanel($flash['message'], $flash['type'], $post);
+});
 
-if ($method === 'POST' && $path === '/admin/users/password') {
-    $flash = $directoryController->adminResetUserPassword($_POST);
+$router->add('POST', '/admin/users/password', function () use ($directoryController, $post): void {
+    $flash = $directoryController->adminResetUserPassword($post);
     if (($flash['type'] ?? 'danger') === 'success') {
         $directoryController->adminPanel($flash['message'], $flash['type']);
-        exit;
+        return;
     }
 
-    $directoryController->adminPanel($flash['message'], $flash['type'], $_POST);
-    exit;
-}
+    $directoryController->adminPanel($flash['message'], $flash['type'], $post);
+});
 
-if ($method === 'POST' && $path === '/admin/users/status') {
-    $flash = $directoryController->adminSetUserStatus($_POST);
+$router->add('POST', '/admin/users/status', function () use ($directoryController, $post): void {
+    $flash = $directoryController->adminSetUserStatus($post);
     $directoryController->adminPanel($flash['message'], $flash['type']);
-    exit;
-}
+});
 
-if ($method === 'POST' && $path === '/admin/users/delete') {
-    $flash = $directoryController->adminDeleteUser($_POST);
+$router->add('POST', '/admin/users/delete', function () use ($directoryController, $post): void {
+    $flash = $directoryController->adminDeleteUser($post);
     $directoryController->adminPanel($flash['message'], $flash['type']);
-    exit;
-}
+});
 
-if ($method === 'GET' && preg_match('#^/reports/(\d+)$#', $path, $matches) === 1) {
+$router->addRegex('GET', '#^/reports/(\d+)$#', function (array $matches) use ($directoryController): void {
     $directoryController->reportDetail((int)$matches[1]);
-    exit;
-}
+});
 
-if ($method === 'POST' && preg_match('#^/reports/(\d+)/comments$#', $path, $matches) === 1) {
+$router->addRegex('POST', '#^/reports/(\d+)/comments$#', function (array $matches) use ($directoryController, $post): void {
     $reportId = (int)$matches[1];
-    $flash = $directoryController->storeReportComment($reportId, $_POST);
-    $directoryController->reportDetail($reportId, $flash['message'], $flash['type'], $_POST);
-    exit;
-}
+    $flash = $directoryController->storeReportComment($reportId, $post);
+    $directoryController->reportDetail($reportId, $flash['message'], $flash['type'], $post);
+});
 
-if ($method === 'POST' && preg_match('#^/reports/(\d+)/admin/hide$#', $path, $matches) === 1) {
+$router->addRegex('POST', '#^/reports/(\d+)/admin/hide$#', function (array $matches) use ($directoryController, $post): void {
     $reportId = (int)$matches[1];
-    $flash = $directoryController->adminHideSubmission($reportId);
-    $redirectSoftware = isset($_POST['software_id']) ? (int)$_POST['software_id'] : 0;
+    $flash = $directoryController->adminHideSubmission($reportId, $post);
+    $redirectSoftware = (int)($post['software_id'] ?? 0);
     if ($redirectSoftware > 0) {
-        $directoryController->softwareDetail($redirectSoftware, $flash['message'], $flash['type'], $_POST);
-        exit;
+        $directoryController->softwareDetail($redirectSoftware, $flash['message'], $flash['type'], $post);
+        return;
     }
 
-    $directoryController->reportDetail($reportId, $flash['message'], $flash['type'], $_POST);
-    exit;
-}
+    $directoryController->reportDetail($reportId, $flash['message'], $flash['type'], $post);
+});
 
-if ($method === 'POST' && preg_match('#^/reports/(\d+)/admin/severity$#', $path, $matches) === 1) {
+$router->addRegex('POST', '#^/reports/(\d+)/admin/severity$#', function (array $matches) use ($directoryController, $post): void {
     $reportId = (int)$matches[1];
-    $flash = $directoryController->adminOverrideSeverity($reportId, $_POST);
-    $directoryController->reportDetail($reportId, $flash['message'], $flash['type'], $_POST);
-    exit;
-}
+    $flash = $directoryController->adminOverrideSeverity($reportId, $post);
+    $directoryController->reportDetail($reportId, $flash['message'], $flash['type'], $post);
+});
 
-if ($method === 'POST' && preg_match('#^/reports/(\d+)/comments/(\d+)/hide$#', $path, $matches) === 1) {
+$router->addRegex('POST', '#^/reports/(\d+)/comments/(\d+)/hide$#', function (array $matches) use ($directoryController, $post): void {
     $reportId = (int)$matches[1];
-    $flash = $directoryController->adminHideReportComment((int)$matches[2]);
-    $directoryController->reportDetail($reportId, $flash['message'], $flash['type'], $_POST);
+    $flash = $directoryController->adminHideReportComment((int)$matches[2], $post);
+    $directoryController->reportDetail($reportId, $flash['message'], $flash['type'], $post);
+});
+
+if ($router->dispatch($method, $path)) {
     exit;
 }
 

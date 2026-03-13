@@ -1,0 +1,26 @@
+{
+  "name": "www",
+  "version": "1.0.0",
+  "description": "Starter implementation for a maintainable **PHP + JavaScript + CSS** project with an accessible UI and structured routing/controller/view separation.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i assets/tailwind.css -o public/assets/css/vendor.css --minify",
+    "build:vendor-js": "node -e \"require('fs').mkdirSync('public/assets/vendor',{recursive:true}); require('fs').copyFileSync('node_modules/jquery/dist/jquery.min.js','public/assets/vendor/jquery.min.js')\"",
+    "build:assets": "npm run build:css && npm run build:vendor-js",
+    "postinstall": "npm run build:assets"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.2.1",
+    "daisyui": "^5.5.19",
+    "tailwindcss": "^4.2.1"
+  },
+  "dependencies": {
+    "jquery": "^4.0.0-rc.1"
+  }
+}

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 final class HomeController
 {
-    public function __construct(private SubmissionRepository $submissionRepository)
+    public function __construct(private DirectoryRepository $directoryRepository)
     {
     }
 
@@ -14,7 +14,7 @@ final class HomeController
         $canonicalUrl = $baseUrl . '/';
 
         View::render('home', [
-            'history' => $this->submissionRepository->latest(),
+            'history' => $this->directoryRepository->latest(),
             'flash' => $flash,
             'metaTitle' => 'IDN Validation Directory | Submit and Track Reports',
             'metaDescription' => 'Submit IDN email validation test reports, browse tested software, and help maintainers identify reproducible WordPress plugin issues quickly.',
@@ -79,6 +79,28 @@ final class HomeController
                     ],
                 ],
             ],
+        ]);
+    }
+
+    public function imprint(): void
+    {
+        $baseUrl = $this->baseUrl();
+
+        View::render('imprint', [
+            'metaTitle' => 'Impressum',
+            'metaDescription' => 'Impressum mit Unternehmens- und Kontaktdaten der Ledl.net GmbH & Co. KG.',
+            'canonicalUrl' => $baseUrl . '/impressum',
+        ]);
+    }
+
+    public function privacy(): void
+    {
+        $baseUrl = $this->baseUrl();
+
+        View::render('privacy', [
+            'metaTitle' => 'Datenschutz (DSGVO)',
+            'metaDescription' => 'Informationen zur Datenverarbeitung, Server-Logs, Cookies und Ihren DSGVO-Rechten.',
+            'canonicalUrl' => $baseUrl . '/datenschutz',
         ]);
     }
 

@@ -216,12 +216,19 @@ $(function () {
         const $submit = $('#submit-button');
         const $softwareName = $('#software_name');
         const $softwareDescription = $('#software_description');
+        const $softwareUrl = $('#software_url');
         const $status = $('#submit-form-status');
         const $testedCountBadge = $('#tested-count-badge');
+        const $wordpressVersion = $('#wordpress_version');
+        const $wordpressVersionStatus = $('#wordpress-version-status');
         const $submitterEmail = $('#submitter_email');
         const $submitterEmailStatus = $('#submitter-email-status');
+        const $submitterName = $('#submitter_name');
+        const $rememberReporter = $('#remember_reporter');
+        const $pluginSlugSuggestions = $('#plugin-slug-suggestions');
         const defaultEmailHint = 'Not shown publicly.';
         const validEmailHint = 'Valid email format. Not shown publicly.';
+        const reporterStorageKey = 'idnReporterPrefs.v1';
         let emailValidationTimer = null;
         let emailValidationRequest = null;
         let lastValidatedEmail = '';
@@ -231,9 +238,426 @@ $(function () {
         let easterCompleted = false;
         let easterLockUntil = 0;
         let deferredValidationResult = null;
+        let pluginVersionTimer = null;
+        let pluginVersionRequest = null;
+        let pluginVersionInFlightSlug = '';
+        let lastVersionLookupSlug = '';
+        let slugSuggestionTimer = null;
+        let slugSuggestionRequest = null;
+        const slugSuggestionCache = new Map();
+        const pluginVersionCache = new Map();
+        const suggestionLimit = 8;
+        const pluginVersionCacheStorageKey = 'idnPluginVersionCache.v1';
+        const pluginVersionCacheTtlMs = 6 * 60 * 60 * 1000;
 
         function selectedSoftwareType() {
             return String($('input[name="software_type"]:checked').val() || 'wp_plugin');
+        }
+
+        function isWordPressPluginSelected() {
+            return selectedSoftwareType() === 'wp_plugin';
+        }
+
+        function readReporterPrefs() {
+            try {
+                const raw = window.localStorage.getItem(reporterStorageKey);
+                if (!raw) {
+                    return null;
+                }
+
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') {
+                    return null;
+                }
+
+                return {
+                    remember: parsed.remember === true,
+                    name: typeof parsed.name === 'string' ? parsed.name : '',
+                    email: typeof parsed.email === 'string' ? parsed.email : '',
+                };
+            } catch (_error) {
+                return null;
+            }
+        }
+
+        function writeReporterPrefs(payload) {
+            try {
+                window.localStorage.setItem(reporterStorageKey, JSON.stringify(payload));
+            } catch (_error) {
+            }
+        }
+
+        function clearReporterPrefs() {
+            try {
+                window.localStorage.removeItem(reporterStorageKey);
+            } catch (_error) {
+            }
+        }
+
+        function syncReporterPrefillFromStorage() {
+            const prefs = readReporterPrefs();
+            if (!prefs || prefs.remember !== true) {
+                return;
+            }
+
+            $rememberReporter.prop('checked', true);
+            if (fieldValue('#submitter_name') === '' && prefs.name !== '') {
+                $submitterName.val(prefs.name);
+            }
+            if (fieldValue('#submitter_email') === '' && prefs.email !== '') {
+                $submitterEmail.val(prefs.email);
+            }
+        }
+
+        function persistReporterPrefsIfEnabled() {
+            if ($rememberReporter.length === 0 || $rememberReporter.is(':checked') !== true) {
+                return;
+            }
+
+            writeReporterPrefs({
+                remember: true,
+                name: fieldValue('#submitter_name'),
+                email: fieldValue('#submitter_email'),
+            });
+        }
+
+        function parsePluginSlugInput(input) {
+            const value = String(input || '').trim().toLowerCase();
+            if (value === '') {
+                return null;
+            }
+
+            if (/^[a-z0-9][a-z0-9-]*$/.test(value)) {
+                return value;
+            }
+
+            let asUrl = value;
+            if (!/^https?:\/\//.test(asUrl)) {
+                asUrl = 'https://' + asUrl.replace(/^\/+/, '');
+            }
+
+            let parsed;
+            try {
+                parsed = new URL(asUrl);
+            } catch (_error) {
+                return null;
+            }
+
+            const host = parsed.hostname.toLowerCase();
+            if (!/(^|\.)wordpress\.org$/.test(host)) {
+                return null;
+            }
+
+            const match = parsed.pathname.match(/^\/plugins\/([a-z0-9-]+)\/?$/);
+            if (!match) {
+                return null;
+            }
+
+            return match[1];
+        }
+
+        function shouldLookupSlugSuggestions(input) {
+            const value = String(input || '').trim().toLowerCase();
+            return /^[a-z0-9-]{4,}$/.test(value);
+        }
+
+        function renderSlugSuggestions(suggestions) {
+            if ($pluginSlugSuggestions.length === 0) {
+                return;
+            }
+
+            $pluginSlugSuggestions.empty();
+            suggestions.forEach(function (item) {
+                const slug = String((item && item.slug) || '');
+                if (slug === '') {
+                    return;
+                }
+
+                const name = decodeHtmlEntities(String((item && item.name) || slug));
+                const label = name.toLowerCase() === slug.toLowerCase() ? slug : (slug + ' - ' + name);
+                $pluginSlugSuggestions.append($('<option>').attr('value', slug).attr('label', label));
+            });
+        }
+
+        function decodeHtmlEntities(value) {
+            const text = String(value || '');
+            if (text.indexOf('&') === -1) {
+                return text;
+            }
+
+            const decoder = document.createElement('textarea');
+            decoder.innerHTML = text;
+            return decoder.value;
+        }
+
+        function cacheSlugSuggestions(query, suggestions) {
+            slugSuggestionCache.set(String(query), Array.isArray(suggestions) ? suggestions : []);
+        }
+
+        function findDerivableSuggestionSet(query) {
+            const normalizedQuery = String(query || '').toLowerCase();
+            if (!shouldLookupSlugSuggestions(normalizedQuery)) {
+                return null;
+            }
+
+            if (slugSuggestionCache.has(normalizedQuery)) {
+                return slugSuggestionCache.get(normalizedQuery) || [];
+            }
+
+            const keys = Array.from(slugSuggestionCache.keys())
+                .filter(function (key) {
+                    return normalizedQuery.startsWith(key) && key.length < normalizedQuery.length;
+                })
+                .sort(function (a, b) {
+                    return b.length - a.length;
+                });
+
+            for (const key of keys) {
+                const parentSuggestions = slugSuggestionCache.get(key) || [];
+                const parentCount = parentSuggestions.length;
+
+                if (parentCount === 0 || parentCount < suggestionLimit) {
+                    const derived = parentSuggestions.filter(function (item) {
+                        const slug = String((item && item.slug) || '').toLowerCase();
+                        return slug.startsWith(normalizedQuery);
+                    });
+
+                    cacheSlugSuggestions(normalizedQuery, derived);
+                    return derived;
+                }
+            }
+
+            return null;
+        }
+
+        function setWordPressVersionStatus(message) {
+            if ($wordpressVersionStatus.length === 0) {
+                return;
+            }
+
+            $wordpressVersionStatus.text(String(message || ''));
+        }
+
+        function loadPluginVersionCacheFromStorage() {
+            try {
+                const raw = window.sessionStorage.getItem(pluginVersionCacheStorageKey);
+                if (!raw) {
+                    return;
+                }
+
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') {
+                    return;
+                }
+
+                const now = Date.now();
+                Object.keys(parsed).forEach(function (slug) {
+                    const item = parsed[slug];
+                    if (!item || typeof item !== 'object') {
+                        return;
+                    }
+
+                    const cachedAt = Number(item.cachedAt || 0);
+                    if (!Number.isFinite(cachedAt) || cachedAt <= 0 || (now - cachedAt) > pluginVersionCacheTtlMs) {
+                        return;
+                    }
+
+                    const version = typeof item.version === 'string' ? item.version : '';
+                    pluginVersionCache.set(slug, version);
+                });
+            } catch (_error) {
+            }
+        }
+
+        function persistPluginVersionCacheToStorage() {
+            try {
+                const now = Date.now();
+                const payload = {};
+
+                pluginVersionCache.forEach(function (version, slug) {
+                    payload[slug] = {
+                        version: String(version || ''),
+                        cachedAt: now,
+                    };
+                });
+
+                window.sessionStorage.setItem(pluginVersionCacheStorageKey, JSON.stringify(payload));
+            } catch (_error) {
+            }
+        }
+
+        function applyPluginVersionFromCache(slug) {
+            if (!pluginVersionCache.has(slug)) {
+                return false;
+            }
+
+            const version = String(pluginVersionCache.get(slug) || '').trim();
+            lastVersionLookupSlug = slug;
+
+            if (version === '') {
+                setWordPressVersionStatus('');
+                return true;
+            }
+
+            const canAutofill = fieldValue('#wordpress_version') === '' || String($wordpressVersion.attr('data-auto-filled') || '') === '1';
+            if (!canAutofill) {
+                setWordPressVersionStatus('');
+                return true;
+            }
+
+            $wordpressVersion.val(version);
+            $wordpressVersion.attr('data-auto-filled', '1');
+            setWordPressVersionStatus('Latest plugin version pre-filled from WordPress.org.');
+            validateFormReady();
+
+            return true;
+        }
+
+        function schedulePluginVersionLookup(delayMs) {
+            if (pluginVersionTimer) {
+                clearTimeout(pluginVersionTimer);
+            }
+
+            pluginVersionTimer = setTimeout(function () {
+                lookupPluginVersion();
+            }, delayMs);
+        }
+
+        function lookupPluginVersion() {
+            if (!isWordPressPluginSelected()) {
+                setWordPressVersionStatus('');
+                return;
+            }
+
+            const slug = parsePluginSlugInput(fieldValue('#software_url'));
+            if (!slug) {
+                lastVersionLookupSlug = '';
+                setWordPressVersionStatus('');
+                return;
+            }
+
+            if (slug === lastVersionLookupSlug) {
+                return;
+            }
+
+            if (applyPluginVersionFromCache(slug)) {
+                return;
+            }
+
+            if (pluginVersionInFlightSlug === slug && pluginVersionRequest && pluginVersionRequest.readyState !== 4) {
+                return;
+            }
+
+            if (pluginVersionRequest && pluginVersionRequest.readyState !== 4) {
+                pluginVersionRequest.abort();
+            }
+
+            pluginVersionInFlightSlug = slug;
+
+            pluginVersionRequest = $.ajax({
+                url: '/api/plugin-version',
+                method: 'GET',
+                dataType: 'json',
+                data: { slug: slug },
+            });
+
+            pluginVersionRequest.done(function (response) {
+                const currentSlug = parsePluginSlugInput(fieldValue('#software_url'));
+                if (!currentSlug || currentSlug !== slug || !isWordPressPluginSelected()) {
+                    return;
+                }
+
+                const version = String((response && response.version) || '').trim();
+                pluginVersionCache.set(slug, version);
+                persistPluginVersionCacheToStorage();
+                lastVersionLookupSlug = slug;
+                pluginVersionInFlightSlug = '';
+
+                if (version === '') {
+                    setWordPressVersionStatus('');
+                    return;
+                }
+
+                const canAutofill = fieldValue('#wordpress_version') === '' || String($wordpressVersion.attr('data-auto-filled') || '') === '1';
+                if (!canAutofill) {
+                    setWordPressVersionStatus('');
+                    return;
+                }
+
+                $wordpressVersion.val(version);
+                $wordpressVersion.attr('data-auto-filled', '1');
+                setWordPressVersionStatus('Latest plugin version pre-filled from WordPress.org.');
+                validateFormReady();
+            });
+
+            pluginVersionRequest.fail(function (_xhr, status) {
+                if (pluginVersionInFlightSlug === slug) {
+                    pluginVersionInFlightSlug = '';
+                }
+                if (status !== 'abort') {
+                    pluginVersionCache.set(slug, '');
+                    persistPluginVersionCacheToStorage();
+                    setWordPressVersionStatus('');
+                }
+            });
+        }
+
+        function scheduleSlugSuggestions(delayMs) {
+            if (slugSuggestionTimer) {
+                clearTimeout(slugSuggestionTimer);
+            }
+
+            slugSuggestionTimer = setTimeout(function () {
+                lookupSlugSuggestions();
+            }, delayMs);
+        }
+
+        function lookupSlugSuggestions() {
+            if (!isWordPressPluginSelected()) {
+                renderSlugSuggestions([]);
+                return;
+            }
+
+            const currentInput = fieldValue('#software_url').toLowerCase();
+            if (!shouldLookupSlugSuggestions(currentInput)) {
+                renderSlugSuggestions([]);
+                return;
+            }
+
+            const derivableSuggestions = findDerivableSuggestionSet(currentInput);
+            if (derivableSuggestions !== null) {
+                renderSlugSuggestions(derivableSuggestions);
+                return;
+            }
+
+            if (slugSuggestionRequest && slugSuggestionRequest.readyState !== 4) {
+                slugSuggestionRequest.abort();
+            }
+
+            slugSuggestionRequest = $.ajax({
+                url: '/api/plugin-slug-suggestions',
+                method: 'GET',
+                dataType: 'json',
+                data: { q: currentInput },
+            });
+
+            slugSuggestionRequest.done(function (response) {
+                const latestInput = fieldValue('#software_url').toLowerCase();
+                if (!shouldLookupSlugSuggestions(latestInput) || latestInput !== currentInput) {
+                    return;
+                }
+
+                const suggestions = Array.isArray(response && response.suggestions) ? response.suggestions : [];
+                cacheSlugSuggestions(currentInput, suggestions);
+                renderSlugSuggestions(suggestions);
+            });
+
+            slugSuggestionRequest.fail(function (_xhr, status) {
+                if (status !== 'abort') {
+                    cacheSlugSuggestions(currentInput, []);
+                    renderSlugSuggestions([]);
+                }
+            });
         }
 
         function syncSoftwareFieldVisibility() {
@@ -260,6 +684,9 @@ $(function () {
                 $softwareName.val('');
                 $softwareDescription.val('');
                 clearFieldError($softwareName);
+            } else {
+                setWordPressVersionStatus('');
+                renderSlugSuggestions([]);
             }
         }
 
@@ -547,6 +974,26 @@ $(function () {
         $form.on('change', 'input[name="software_type"]', function () {
             syncSoftwareFieldVisibility();
             validateFormReady();
+            scheduleSlugSuggestions(0);
+        });
+
+        $form.on('input', '#software_url', function () {
+            const nextSlug = parsePluginSlugInput(fieldValue('#software_url'));
+            if (nextSlug !== lastVersionLookupSlug) {
+                lastVersionLookupSlug = '';
+            }
+
+            scheduleSlugSuggestions(180);
+            setWordPressVersionStatus('');
+        });
+
+        $form.on('blur', '#software_url', function () {
+            schedulePluginVersionLookup(0);
+        });
+
+        $form.on('input', '#wordpress_version', function () {
+            $wordpressVersion.attr('data-auto-filled', '0');
+            setWordPressVersionStatus('');
         });
 
         $form.on('change', '.result-select', function () {
@@ -577,6 +1024,20 @@ $(function () {
             setEmailStatus('neutral', 'Checking email format...');
             scheduleEmailValidation(1000);
             triggerEmailEasterEgg();
+            persistReporterPrefsIfEnabled();
+        });
+
+        $form.on('input', '#submitter_name', function () {
+            persistReporterPrefsIfEnabled();
+        });
+
+        $form.on('change', '#remember_reporter', function () {
+            if ($rememberReporter.is(':checked')) {
+                persistReporterPrefsIfEnabled();
+                return;
+            }
+
+            clearReporterPrefs();
         });
 
         $form.on('blur', '#submitter_email', function () {
@@ -631,9 +1092,12 @@ $(function () {
         });
 
         syncSoftwareFieldVisibility();
+        loadPluginVersionCacheFromStorage();
+        syncReporterPrefillFromStorage();
         updateTemplateOutcome();
         validateFormReady();
         setEmailStatus('neutral', defaultEmailHint);
+        scheduleSlugSuggestions(0);
 
         if (fieldValue('#submitter_email') !== '') {
             scheduleEmailValidation(0);

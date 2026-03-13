@@ -3,7 +3,7 @@
 <section class="grid gap-4 lg:grid-cols-[1.4fr_1fr]" aria-labelledby="page-title">
     <article class="card border border-base-300 bg-base-100 shadow-sm">
         <div class="card-body gap-3 md:gap-4">
-            <p class="badge badge-outline">Community Project · WordPress Ecosystem</p>
+            <p class="badge badge-outline">Community Project</p>
             <h1 id="page-title" class="text-3xl font-semibold tracking-tight md:text-4xl">Fixing IDN Email Validation in WordPress Plugins</h1>
             <p class="max-w-3xl text-base-content/75">Help test real plugin behavior with internationalized email domains (IDN), publish reproducible results, and support maintainers shipping real fixes.</p>
             <div class="flex flex-wrap gap-2">
@@ -20,7 +20,7 @@
             <p class="text-base-content/75">Use <code>playground.wordpress.net</code> to test plugins in a disposable WordPress environment, then submit your findings here.</p>
             <div class="rounded-box border border-base-300/80 bg-base-100 p-3">
                 <p class="font-medium">Need context first?</p>
-                <a href="/about" class="link link-hover text-sm">Read scope, severity model, privacy, and FAQ on the About page</a>
+                <a href="/about" class="link link-hover text-sm">Read the About page</a>
             </div>
         </div>
     </article>
@@ -47,7 +47,7 @@
             <article class="rounded-box border border-base-300 bg-base-100 p-4">
                 <span class="badge badge-outline mb-2">Step 3</span>
                 <h3 class="mb-1 font-semibold">Publish report</h3>
-                <p class="text-sm text-base-content/75">Submit and get an immediate public report with computed severity.</p>
+                <p class="text-sm text-base-content/75">Submit and share your results with the community.</p>
             </article>
         </div>
     </div>

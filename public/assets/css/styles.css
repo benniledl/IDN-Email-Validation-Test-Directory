@@ -13,7 +13,7 @@
 }
 
 html, body {
-    font-family: "Manrope", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
 }
 
 body.app-body {
@@ -169,6 +169,18 @@ body.admin-modal-open { overflow: hidden; }
 
 .link {
     text-underline-offset: 2px;
+}
+
+.comment-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    line-height: 1;
+}
+
+.comment-avatar > span {
+    line-height: 1;
 }
 
 .field-error {

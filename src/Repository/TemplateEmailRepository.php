@@ -9,7 +9,7 @@ final class TemplateEmailRepository
      */
     private const DEFAULT_TEMPLATES = [
         [1, 'max@müller.de', 1, 3],
-        [3, 'büro@test.de', 1, 1],
+        [3, 'büro@test.de', 1, 3],
         [4, 'max@info.versicherung', 1, 3],
         [5, 'max@newsletter.müller.de', 1, 2],
         [7, 'max@例子.广告', 1, 1],

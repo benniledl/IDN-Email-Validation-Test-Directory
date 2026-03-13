@@ -24,6 +24,11 @@ $severityClass = match ($overallSeverity) {
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
+                <?php if (!empty($playgroundLaunchUrl)): ?>
+                    <a href="<?= htmlspecialchars((string)$playgroundLaunchUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="btn btn-sm btn-primary">
+                        Test in Playground
+                    </a>
+                <?php endif; ?>
                 <a href="<?= htmlspecialchars((string)$software['canonical_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">Official page</a>
                 <?php if (!empty($adminMode)): ?>
                                         <div class="dropdown dropdown-end table-actions-dropdown">
@@ -136,6 +141,10 @@ $severityClass = match ($overallSeverity) {
 
         <form method="post" action="/software/<?= (int)$software['id'] ?>/comments" class="mb-5 rounded-box border border-base-300 bg-base-200/60 p-3 md:p-4">
             <input type="hidden" name="_form" value="software_comment">
+            <input type="hidden" name="comment_guard" value="<?= htmlspecialchars((string)($commentGuard ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+            <div class="hidden" aria-hidden="true">
+                <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+            </div>
             <div class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
                 <label class="form-control w-full">
                     <div class="label pb-1">
@@ -160,38 +169,8 @@ $severityClass = match ($overallSeverity) {
         <?php else: ?>
             <div class="space-y-4">
                 <?php foreach ($comments as $comment): ?>
-                    <?php
-                    $commentAuthor = trim((string)($comment['author_name'] ?? 'Anonymous'));
-                    $commentInitial = function_exists('mb_substr') ? (string)mb_substr($commentAuthor, 0, 1, 'UTF-8') : substr($commentAuthor, 0, 1);
-                    $commentInitial = function_exists('mb_strtoupper') ? (string)mb_strtoupper($commentInitial, 'UTF-8') : strtoupper($commentInitial);
-                    if ($commentInitial === '') {
-                        $commentInitial = 'A';
-                    }
-                    ?>
-                    <article class="chat chat-start">
-                        <div class="chat-image avatar placeholder">
-                            <div class="flex w-10 items-center justify-center rounded-full bg-base-300 text-base-content">
-                                <span class="text-xs font-semibold uppercase leading-none"><?= htmlspecialchars($commentInitial, ENT_QUOTES, 'UTF-8') ?></span>
-                            </div>
-                        </div>
-                        <div class="chat-header mb-1 flex items-center gap-2 text-sm">
-                            <span class="font-semibold text-base-content"><?= htmlspecialchars($commentAuthor, ENT_QUOTES, 'UTF-8') ?></span>
-                            <time class="text-base-content/60" title="<?= htmlspecialchars((string)$comment['created_at'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(View::timeAgo((string)$comment['created_at']), ENT_QUOTES, 'UTF-8') ?></time>
-                            <?php if ((int)($comment['is_admin_solution'] ?? 0) === 1): ?><span class="badge badge-success badge-sm">Official</span><?php endif; ?>
-                        </div>
-                        <div class="chat-bubble chat-bubble-neutral whitespace-pre-wrap bg-base-200 text-base-content"><?= htmlspecialchars((string)$comment['comment'], ENT_QUOTES, 'UTF-8') ?></div>
-                        <?php if (!empty($adminMode)): ?>
-                            <div class="chat-footer mt-2">
-                                <form method="post" action="/software/<?= (int)$software['id'] ?>/comments/<?= (int)$comment['id'] ?>/hide" data-confirm="Delete this software comment?">
-                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)$adminCsrfToken, ENT_QUOTES, 'UTF-8') ?>">
-                                    <button class="btn btn-xs btn-error btn-outline" type="submit" title="Delete comment">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0l1 12a1 1 0 001 1h6a1 1 0 001-1l1-12"/></svg>
-                                        Delete
-                                    </button>
-                                </form>
-                            </div>
-                        <?php endif; ?>
-                    </article>
+                    <?php $deletePath = '/software/' . (int)$software['id'] . '/comments/' . (int)$comment['id'] . '/hide'; ?>
+                    <?php require __DIR__ . '/partials/comment-item.php'; ?>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>

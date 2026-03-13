@@ -14,13 +14,40 @@
             <div class="alert alert-<?= htmlspecialchars($flashTone, ENT_QUOTES, 'UTF-8') ?>" role="status" data-dismissible="true"><?= htmlspecialchars((string)$flash, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
 
-        <form method="get" action="/software" class="grid gap-2 md:grid-cols-[1fr_auto]">
-            <label class="input input-bordered flex items-center gap-2">
-                <span class="text-sm text-base-content/60">Search</span>
-                <input id="q" name="q" class="grow" value="<?= htmlspecialchars((string)($search ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="Software name">
-            </label>
-            <button class="btn btn-outline" type="submit">Apply</button>
-        </form>
+        <?php
+        $activeSearch = trim((string)($search ?? ''));
+        $hasActiveFilters = $activeSearch !== '';
+        ?>
+        <details class="rounded-box border border-base-300 bg-base-200/50" <?= $hasActiveFilters ? 'open' : '' ?>>
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-3 md:px-4">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-sm font-semibold">Filters</span>
+                    <?php if ($hasActiveFilters): ?><span class="badge badge-outline badge-sm">Active</span><?php endif; ?>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="badge badge-ghost"><?= count($softwareItems) ?> result<?= count($softwareItems) === 1 ? '' : 's' ?></span>
+                    <span class="text-xs text-base-content/60">Toggle</span>
+                </div>
+            </summary>
+            <div class="border-t border-base-300 px-3 pb-4 pt-3 md:px-4 md:pb-5 md:pt-4">
+                <div class="bg-base-100 py-3 md:py-4">
+                    <form method="get" action="/software" class="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                        <label class="form-control">
+                            <div class="label py-0 pb-1">
+                                <span class="label-text">Search by software, author, or submitter</span>
+                            </div>
+                            <input id="q" type="search" name="q" class="input input-bordered w-full" value="<?= htmlspecialchars((string)($search ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. Contact Form 7, Rock Lobster, or Alex" aria-label="Search software author or submitter">
+                        </label>
+                        <div class="flex flex-wrap gap-2 pb-1 md:justify-end md:pb-0.5">
+                            <button class="btn btn-primary" type="submit">Apply</button>
+                            <?php if ($hasActiveFilters): ?>
+                                <a href="/software" class="btn btn-ghost">Reset</a>
+                            <?php endif; ?>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </details>
 
         <?php if (empty($softwareItems)): ?>
             <div class="rounded-box border border-base-300 bg-base-200 px-4 py-6 text-center text-base-content/70">No software entries match this filter.</div>

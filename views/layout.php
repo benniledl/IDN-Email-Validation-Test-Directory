@@ -6,18 +6,24 @@
     $defaultMetaDescription = 'Community-driven testing and reporting for WordPress plugins and software that validate IDN email domains incorrectly.';
     $metaTitleValue = trim((string)($metaTitle ?? $defaultMetaTitle));
     $metaDescriptionValue = trim((string)($metaDescription ?? $defaultMetaDescription));
+    $metaRobotsValue = trim((string)($metaRobots ?? 'index,follow'));
     $canonicalUrlValue = trim((string)($canonicalUrl ?? ''));
     $metaImageValue = trim((string)($metaImage ?? ''));
     $structuredDataValue = $structuredData ?? null;
+    $vendorCssAssetPath = __DIR__ . '/../public/assets/css/vendor.css';
     $cssAssetPath = __DIR__ . '/../public/assets/css/styles.css';
+    $vendorJsAssetPath = __DIR__ . '/../public/assets/vendor/jquery.min.js';
     $jsAssetPath = __DIR__ . '/../public/assets/js/app.js';
+    $vendorCssAssetVersion = is_file($vendorCssAssetPath) ? (string)filemtime($vendorCssAssetPath) : '1';
     $cssAssetVersion = is_file($cssAssetPath) ? (string)filemtime($cssAssetPath) : '1';
+    $vendorJsAssetVersion = is_file($vendorJsAssetPath) ? (string)filemtime($vendorJsAssetPath) : '1';
     $jsAssetVersion = is_file($jsAssetPath) ? (string)filemtime($jsAssetPath) : '1';
     ?>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($metaTitleValue, ENT_QUOTES, 'UTF-8') ?></title>
     <meta name="description" content="<?= htmlspecialchars($metaDescriptionValue, ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="robots" content="<?= htmlspecialchars($metaRobotsValue, ENT_QUOTES, 'UTF-8') ?>">
     <?php if ($canonicalUrlValue !== ''): ?><link rel="canonical" href="<?= htmlspecialchars($canonicalUrlValue, ENT_QUOTES, 'UTF-8') ?>"><?php endif; ?>
     <meta property="og:type" content="website">
     <meta property="og:title" content="<?= htmlspecialchars($metaTitleValue, ENT_QUOTES, 'UTF-8') ?>">
@@ -28,15 +34,26 @@
     <meta name="twitter:title" content="<?= htmlspecialchars($metaTitleValue, ENT_QUOTES, 'UTF-8') ?>">
     <meta name="twitter:description" content="<?= htmlspecialchars($metaDescriptionValue, ENT_QUOTES, 'UTF-8') ?>">
     <?php if ($metaImageValue !== ''): ?><meta name="twitter:image" content="<?= htmlspecialchars($metaImageValue, ENT_QUOTES, 'UTF-8') ?>"><?php endif; ?>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="/assets/css/vendor.css?v=<?= htmlspecialchars($vendorCssAssetVersion, ENT_QUOTES, 'UTF-8') ?>">
     <link rel="stylesheet" href="/assets/css/styles.css?v=<?= htmlspecialchars($cssAssetVersion, ENT_QUOTES, 'UTF-8') ?>">
     <?php if (is_array($structuredDataValue)): ?>
         <script type="application/ld+json"><?= json_encode($structuredDataValue, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?></script>
     <?php endif; ?>
+    <!-- Matomo -->
+    <script>
+    var _paq = window._paq = window._paq || [];
+    /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+    _paq.push(['trackPageView']);
+    _paq.push(['enableLinkTracking']);
+    (function() {
+        var u="//idn.report/matomo/";
+        _paq.push(['setTrackerUrl', u+'matomo.php']);
+        _paq.push(['setSiteId', '1']);
+        var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+        g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+    })();
+    </script>
+    <!-- End Matomo Code -->
 </head>
 <body class="app-body min-h-screen bg-base-200 text-base-content">
 <input id="mobile-nav-toggle" type="checkbox" class="peer/mobile-nav sr-only" aria-hidden="true">
@@ -47,6 +64,7 @@
             <a href="/" class="btn btn-sm btn-ghost normal-case">Home</a>
             <a href="/about" class="btn btn-sm btn-ghost normal-case">About</a>
             <a href="/software" class="btn btn-sm btn-ghost normal-case">Software</a>
+            <a href="/reports" class="btn btn-sm btn-ghost normal-case">Reports</a>
             <a href="/submit-report" class="btn btn-sm btn-primary normal-case">Submit Report</a>
         </div>
         <div class="ml-auto md:hidden">
@@ -86,6 +104,10 @@
                     <p class="text-lg font-semibold">Software</p>
                     <p class="text-sm text-base-content/70">Browse tested plugins and tools</p>
                 </a>
+                <a href="/reports" class="rounded-box border border-base-300 bg-base-100 p-4 shadow-sm transition hover:border-base-400">
+                    <p class="text-lg font-semibold">Reports</p>
+                    <p class="text-sm text-base-content/70">Browse individual report entries</p>
+                </a>
                 <a href="/submit-report" class="rounded-box border border-primary/30 bg-primary/10 p-4 shadow-sm transition hover:border-primary/50">
                     <p class="text-lg font-semibold">Submit Report</p>
                     <p class="text-sm text-base-content/70">Share your IDN validation findings</p>
@@ -124,31 +146,32 @@
     <div class="flex flex-wrap items-center justify-between gap-2">
         <span class="text-sm text-base-content/70">IDN Email Validation Test Directory</span>
         <nav class="flex flex-wrap gap-1">
-            <a href="/about" class="btn btn-xs btn-ghost">About</a>
-            <a href="/software" class="btn btn-xs btn-ghost">Software</a>
-            <a href="/submit-report" class="btn btn-xs btn-ghost">Submit Report</a>
+            <a href="/impressum" class="btn btn-xs btn-ghost">Impressum</a>
+            <a href="/datenschutz" class="btn btn-xs btn-ghost">Datenschutz</a>
             <a href="<?= htmlspecialchars($adminHref, ENT_QUOTES, 'UTF-8') ?>" class="btn btn-xs btn-ghost">Admin</a>
         </nav>
     </div>
 </footer>
 
-<div class="admin-modal fixed inset-0 z-50 grid place-items-center bg-base-content/40 p-4" id="confirm-modal" hidden>
-    <div class="card w-full max-w-lg border border-base-300 bg-base-100 shadow-xl">
-        <div class="card-body gap-4">
-            <div class="flex items-start justify-between gap-3">
-                <h3 class="card-title text-lg">Confirm action</h3>
-                <button type="button" class="btn btn-sm btn-square btn-ghost" aria-label="Close" data-admin-modal-close>x</button>
-            </div>
-            <p id="confirm-modal-message" class="text-base-content/80">Are you sure you want to continue?</p>
-            <div class="card-actions justify-end gap-2">
-                <button type="button" class="btn btn-outline" data-admin-modal-close>Cancel</button>
-                <button type="button" class="btn btn-error" id="confirm-modal-submit">Confirm</button>
+<?php if (!empty($_SESSION['admin_auth_type'])): ?>
+    <div class="admin-modal fixed inset-0 z-50 grid place-items-center bg-base-content/40 p-4" id="confirm-modal" hidden>
+        <div class="card w-full max-w-lg border border-base-300 bg-base-100 shadow-xl">
+            <div class="card-body gap-4">
+                <div class="flex items-start justify-between gap-3">
+                    <h3 class="card-title text-lg">Confirm action</h3>
+                    <button type="button" class="btn btn-sm btn-square btn-ghost" aria-label="Close" data-admin-modal-close>x</button>
+                </div>
+                <p id="confirm-modal-message" class="text-base-content/80">Are you sure you want to continue?</p>
+                <div class="card-actions justify-end gap-2">
+                    <button type="button" class="btn btn-outline" data-admin-modal-close>Cancel</button>
+                    <button type="button" class="btn btn-error" id="confirm-modal-submit">Confirm</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
+<?php endif; ?>
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+<script src="/assets/vendor/jquery.min.js?v=<?= htmlspecialchars($vendorJsAssetVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="/assets/js/app.js?v=<?= htmlspecialchars($jsAssetVersion, ENT_QUOTES, 'UTF-8') ?>"></script>
 </body>
 </html>

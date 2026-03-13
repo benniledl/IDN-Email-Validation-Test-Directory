@@ -62,6 +62,8 @@ final class View
     {
         $knownLabels = [
             '/about' => 'About',
+            '/impressum' => 'Impressum',
+            '/datenschutz' => 'Datenschutz',
             '/submit-report' => 'Submit report',
             '/software' => 'Software',
             '/reports' => 'Reports',

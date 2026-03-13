@@ -13,7 +13,7 @@
 
     <article class="card border border-info/30 bg-gradient-to-br from-info/10 via-base-100 to-base-100 shadow-sm">
         <div class="card-body gap-3">
-            <p class="badge badge-info badge-outline">What happens next?</p>
+            <span class="badge badge-info badge-outline inline-flex h-6 w-fit items-center self-start px-2 text-xs">What happens next?</span>
             <h2 class="text-lg font-semibold">What happens with your report?</h2>
             <div class="rounded-box border border-base-300/80 bg-base-100 p-3">
                 <ul class="list-disc space-y-1 pl-5 text-sm text-base-content/75">
@@ -35,20 +35,20 @@
             <ul class="list-disc space-y-1 pl-5 text-sm text-base-content/75">
                 <li>Valid IDN domains should be accepted.</li>
                 <li>Invalid malformed domains should be rejected.</li>
-                <li>Failures are recorded per tested template.</li>
             </ul>
         </div>
     </article>
 
     <article class="card border border-base-300 bg-base-100 shadow-sm">
         <div class="card-body gap-2">
-            <h2 class="card-title text-lg">What this is not</h2>
-            <p class="text-sm text-base-content/75">This project is focused and intentionally narrow to keep reports actionable.</p>
+            <h2 class="card-title text-lg">Who can contribute</h2>
+            <p class="text-sm text-base-content/75">
+                Everyone is welcome to contribute. Whether you're a developer, plugin author, designer, tester or a user, your help is valuable.
+            </p>
             <div class="divider my-1"></div>
             <ul class="list-disc space-y-1 pl-5 text-sm text-base-content/75">
-                <li>No SMTP delivery testing.</li>
-                <li>No environment matrix benchmarking.</li>
-                <li>No broad anti-spam workflow.</li>
+                <li>Testing different plugins.</li>
+                <li>Developers submitting fixes.</li>
             </ul>
         </div>
     </article>
@@ -56,12 +56,11 @@
     <article class="card border border-base-300 bg-base-100 shadow-sm">
         <div class="card-body gap-2">
             <h2 class="card-title text-lg">Why this matters</h2>
-            <p class="text-sm text-base-content/75">Incorrect validation blocks legitimate users and breaks global email workflows.</p>
+            <p class="text-sm text-base-content/75">Incorrect validation blocks legitimate users.</p>
             <div class="divider my-1"></div>
             <ul class="list-disc space-y-1 pl-5 text-sm text-base-content/75">
                 <li>Real users are rejected from forms.</li>
                 <li>Plugins diverge in behavior and quality.</li>
-                <li>Shared evidence speeds up real fixes.</li>
             </ul>
         </div>
     </article>
@@ -79,7 +78,7 @@
                 </div>
                 <div class="rounded-box border border-base-300 bg-base-100 p-3">
                     <span class="badge badge-warning badge-outline mb-1">Medium</span>
-                    <p class="text-xs text-base-content/70">Subdomain IDN cases fail.</p>
+                    <p class="text-xs text-base-content/70">Unusual but simple IDN cases fail.</p>
                 </div>
                 <div class="rounded-box border border-base-300 bg-base-100 p-3">
                     <span class="badge badge-info badge-outline mb-1">Low</span>
@@ -100,7 +99,6 @@
             <ul class="list-disc space-y-1 pl-5 text-sm text-base-content/75">
                 <li><strong>Public:</strong> submitter name, role, test outcomes, severity, comments.</li>
                 <li><strong>Private:</strong> submitter email (visible only to admins).</li>
-                <li>Administrators can moderate hidden/spammy content.</li>
             </ul>
         </div>
     </article>
@@ -108,17 +106,29 @@
 
 <section class="card border border-base-300 bg-base-100 shadow-sm" aria-labelledby="community-title">
     <div class="card-body gap-4">
-        <h2 id="community-title" class="text-2xl font-semibold tracking-tight">Community & WordCamp sessions</h2>
-        <p class="text-base-content/75">This project aligns with the WordCamp Vienna 2026 contributor challenge and follow-up publishing session.</p>
-        <div class="grid gap-3 md:grid-cols-2">
-            <a class="rounded-box border border-base-300 bg-base-100 p-4 transition hover:border-base-400 hover:bg-base-100" href="https://vienna.wordcamp.org/2026/session/contributor-challenge-fixing-idn-email-validation-in-wordpress/" target="_blank" rel="noopener">
-                <h3 class="mb-1 font-semibold">Contributor challenge: Fixing IDN & Email Validation in WordPress</h3>
-                <p class="text-sm text-base-content/70">Challenge kickoff: why IDN validation breaks, where bugs are, and how contributors can test and document findings.</p>
-            </a>
-            <a class="rounded-box border border-base-300 bg-base-100 p-4 transition hover:border-base-400 hover:bg-base-100" href="https://vienna.wordcamp.org/2026/session/we-broke-it-now-lets-fix-it-publishing-the-idn-findings/" target="_blank" rel="noopener">
-                <h3 class="mb-1 font-semibold">Solutions session: Publishing the IDN findings</h3>
-                <p class="text-sm text-base-content/70">Follow-up session focused on patterns, actionable fixes, best practices, and a roadmap for core and plugin improvements.</p>
-            </a>
+        <h2 id="community-title" class="text-2xl font-semibold tracking-tight">WordCamp sessions</h2>
+        <p class="text-sm text-base-content/75">At WordCamp Vienna, these two sessions are designed to be attended together: first the challenge, then the solutions.</p>
+
+        <div class="mx-auto grid w-full max-w-4xl gap-3 md:grid-cols-2">
+            <article class="rounded-box border border-base-300 bg-base-100 p-3 shadow-sm">
+                <div class="mb-2 flex items-center justify-between gap-2">
+                    <span class="text-xs uppercase tracking-wide text-base-content/60">WordCamp Vienna</span>
+                    <span class="text-xs font-semibold text-base-content/75">10:00 am - 10:45 am</span>
+                </div>
+                <h3 class="text-sm font-semibold leading-snug">Contributor challenge: Fixing IDN & Email Validation in WordPress</h3>
+                <p class="mt-1 text-xs text-base-content/70">Challenge kickoff: why IDN validation breaks, where bugs are, and how contributors can test and document findings.</p>
+                <a class="btn btn-xs btn-outline mt-3" href="https://vienna.wordcamp.org/2026/session/contributor-challenge-fixing-idn-email-validation-in-wordpress/" target="_blank" rel="noopener">Session details</a>
+            </article>
+
+            <article class="rounded-box border border-base-300 bg-base-100 p-3 shadow-sm">
+                <div class="mb-2 flex items-center justify-between gap-2">
+                    <span class="text-xs uppercase tracking-wide text-base-content/60">WordCamp Vienna</span>
+                    <span class="text-xs font-semibold text-base-content/75">5:15 pm - 6:00 pm</span>
+                </div>
+                <h3 class="text-sm font-semibold leading-snug">Contributor challenge: Solutions for IDN & Email Validation in WordPress</h3>
+                <p class="mt-1 text-xs text-base-content/70">Follow-up session focused on patterns, actionable fixes, best practices, and a roadmap for core and plugin improvements.</p>
+                <a class="btn btn-xs btn-outline mt-3" href="https://vienna.wordcamp.org/2026/session/we-broke-it-now-lets-fix-it-publishing-the-idn-findings/" target="_blank" rel="noopener">Session details</a>
+            </article>
         </div>
     </div>
 </section>
@@ -134,10 +144,6 @@
             <details class="collapse collapse-arrow rounded-box border border-base-300 bg-base-100">
                 <summary class="collapse-title py-3 font-medium">Can plugin maintainers use these reports for fixes?</summary>
                 <div class="collapse-content text-sm text-base-content/75">Yes. Reports are structured to be reproducible and are designed to support issue tickets, pull requests, and patch discussions.</div>
-            </details>
-            <details class="collapse collapse-arrow rounded-box border border-base-300 bg-base-100">
-                <summary class="collapse-title py-3 font-medium">What should I do before submitting?</summary>
-                <div class="collapse-content text-sm text-base-content/75">Test at least one predefined email template in your target software, then submit accepted/rejected outcomes exactly as observed.</div>
             </details>
         </div>
     </div>
